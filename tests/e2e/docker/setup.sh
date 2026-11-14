@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# Idempotent DB seed for the e2e harness. Run from the host; uses docker compose exec.
+set -euo pipefail
+IFS=$'\n\t'
+
+cd "$(dirname "$0")"
+
+DC=(docker compose -f docker-compose.yml)
+
+# Wait for the DB to actually accept queries (compose healthcheck plus a real query).
+echo "[setup] waiting for cacti-db readiness"
+for _ in $(seq 1 60); do
+    if "${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser -e 'SELECT 1' cacti >/dev/null 2>&1; then
+        break
+    fi
+    sleep 2
+done
+"${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser -e 'SELECT 1' cacti >/dev/null
+
+# Drop & recreate the schema so the CLI installer starts from a clean slate.
+"${DC[@]}" exec -T cacti-db sh -c '
+    mariadb -uroot -pcacti-e2e-root -e "DROP DATABASE IF EXISTS cacti; CREATE DATABASE cacti CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON cacti.* TO \"cactiuser\"@\"%\";"
+'
+
+# cli/install_cacti.php is really an upgrade-and-finalize tool: it expects the
+# baseline schema from cacti.sql to already exist before it runs the post-init
+# settings (cacti_db_version, install_complete, default values). Pipe the SQL
+# from inside the master container so the path is stable across hosts.
+echo "[setup] importing baseline cacti.sql"
+"${DC[@]}" exec -T cacti-master sh -c 'cat /var/www/html/cacti.sql' \
+    | "${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser cacti
+
+# Run Cacti's own CLI installer to populate the version rows, run upgrade
+# scripts, and flip install_complete.
+echo "[setup] running cli/install_cacti.php"
+"${DC[@]}" exec -T cacti-master php /var/www/html/cli/install_cacti.php --accept-eula --install --mode=1
+
+# The installer runs through docker exec as root and can create log/cacti.log
+# as root-owned. Apache runs as www-data, so reset runtime-writable paths
+# before curl-based tests request index.php.
+echo "[setup] fixing runtime path ownership"
+"${DC[@]}" exec -T cacti-master sh -c 'mkdir -p /var/www/html/log /var/www/html/rra && touch /var/www/html/log/cacti.log && chown -R www-data:www-data /var/www/html/log /var/www/html/rra /var/cacti-state'
+"${DC[@]}" exec -T cacti-poller sh -c 'mkdir -p /var/www/html/log /var/www/html/rra && touch /var/www/html/log/cacti.log && chown -R www-data:www-data /var/www/html/log /var/www/html/rra /var/cacti-state'
+
+# Confirm the installer populated the version row; abort early if it did not.
+# Cacti tracks the installed db version in a dedicated `version` table (see
+# include/global.php: SELECT cacti FROM version LIMIT 1), not in the settings
+# key/value store, so the check has to look there.
+echo "[setup] verifying installer outcome"
+ROW=$("${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser cacti -Nse "SELECT cacti FROM version LIMIT 1")
+if [ -z "$ROW" ] || [ "$ROW" = "new_install" ]; then
+    echo "[setup] FATAL: installer did not populate the version table (got '$ROW')" >&2
+    exit 2
+fi
+
+# Seed admin password to a known value using bcrypt (compat_password_hash uses
+# PASSWORD_DEFAULT which is bcrypt on PHP >=5.5). We compute the hash inside the
+# master container via PHP so the algorithm matches whatever the running PHP build
+# considers default.
+echo "[setup] seeding admin password"
+ADMIN_HASH=$("${DC[@]}" exec -T cacti-master php -r 'echo password_hash("cacti-e2e-admin", PASSWORD_DEFAULT);')
+"${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser cacti -e "
+    UPDATE user_auth SET password='${ADMIN_HASH}', must_change_password='', password_change='', enabled='on'
+        WHERE username='admin';
+"
+
+# Register the secondary as a remote poller pointing at https://cacti-poller/.
+# Idempotent: ON DUPLICATE KEY for id=2.
+#
+# Also flip allow_unsafe_httpd=on so the verify_peer_name / allow_self_signed
+# guards introduced in commits e7c9918b4 + bf0a7a70e accept the poller's
+# self-signed certificate. Without this seed, get_default_contextoption()
+# leaves verify_peer_name=true and the probe fails with a verification error
+# that the harness should NOT detect (the operator's intent is exactly
+# "I trust my self-signed remote pollers").
+echo "[setup] registering remote poller"
+"${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser cacti -e "
+    INSERT INTO poller (id, name, hostname, dbdefault, dbhost, dbuser, dbpass, dbport, status, disabled)
+        VALUES (2, 'E2E Remote', 'cacti-poller', 'cacti', 'cacti-db', 'cactiuser', 'cactiuser', 3306, 1, '')
+        ON DUPLICATE KEY UPDATE hostname=VALUES(hostname), name=VALUES(name), disabled='';
+    INSERT INTO settings (name, value) VALUES ('allow_unsafe_httpd', 'on')
+        ON DUPLICATE KEY UPDATE value=VALUES(value);
+"
+
+# Create a low-priv user with NO realm grants for test 04. Idempotent via ON DUPLICATE KEY.
+echo "[setup] seeding low-priv user"
+LOWPRIV_HASH=$("${DC[@]}" exec -T cacti-master php -r 'echo password_hash("cacti-e2e-lowpriv", PASSWORD_DEFAULT);')
+"${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser cacti -e "
+    INSERT INTO user_auth (id, username, password, realm, full_name, must_change_password, password_change, show_tree, show_list, show_preview, graph_settings, login_opts, policy_graphs, policy_trees, policy_hosts, policy_graph_templates, enabled, lastchange, lastlogin, password_history, locked, failed_attempts, lastfail, reset_perms)
+        VALUES (1000, 'lowpriv', '${LOWPRIV_HASH}', 0, 'Low Privilege', '', '', 'on', 'on', 'on', 'on', 1, 2, 2, 2, 2, 'on', -1, -1, '-1', '', 0, 0, 0)
+        ON DUPLICATE KEY UPDATE password=VALUES(password), enabled='on';
+    DELETE FROM user_auth_realm WHERE user_id=1000;
+    DELETE FROM user_auth_perms WHERE user_id=1000;
+"
+
+# Domain auth (auth_method=4) plus one LDAP domain bound to the OpenLDAP
+# service. user_template is left as the admin account so a forged realm that
+# skips the bind would provision a user — the 08-ldap-login test asserts it
+# does not. The LDAP account is pre-created in user_auth with realm 1001.
+echo "[setup] seeding LDAP domain auth"
+LDAP_HASH=$("${DC[@]}" exec -T cacti-master php -r 'echo password_hash("unused-local-hash", PASSWORD_DEFAULT);')
+printf "%s\n" \
+	"INSERT INTO settings (name, value) VALUES ('auth_method', '4') ON DUPLICATE KEY UPDATE value='4';" \
+	"INSERT INTO settings (name, value) VALUES ('guest_user', '0') ON DUPLICATE KEY UPDATE value='0';" \
+	"INSERT INTO settings (name, value) VALUES ('user_template', '1') ON DUPLICATE KEY UPDATE value='1';" \
+	"INSERT INTO user_domains (domain_id, domain_name, type, enabled, defdomain, user_id) VALUES (1, 'E2E LDAP', 1, 'on', 1, 0) ON DUPLICATE KEY UPDATE domain_name=VALUES(domain_name), enabled='on', defdomain=1, user_id=0;" \
+	"INSERT INTO user_domains_ldap (domain_id, server, port, port_ssl, proto_version, encryption, referrals, mode, dn, group_require, group_dn, group_attrib, group_member_type, search_base, search_filter, specific_dn, specific_password, cn_full_name, cn_email) VALUES (1, 'openldap', 389, 636, 3, 0, 0, 0, 'cn=<username>,ou=users,dc=example,dc=org', '', '', '', 0, 'ou=users,dc=example,dc=org', '(cn=<username>)', '', '', '', '') ON DUPLICATE KEY UPDATE server=VALUES(server), port=VALUES(port), dn=VALUES(dn), mode=VALUES(mode), encryption=VALUES(encryption);" \
+	"INSERT INTO user_auth (id, username, password, realm, full_name, must_change_password, password_change, show_tree, show_list, show_preview, graph_settings, login_opts, policy_graphs, policy_trees, policy_hosts, policy_graph_templates, enabled, lastchange, lastlogin, password_history, locked, failed_attempts, lastfail, reset_perms) VALUES (1001, 'ldapuser', '${LDAP_HASH}', 1001, 'LDAP E2E User', '', '', 'on', 'on', 'on', 'on', 1, 2, 2, 2, 2, 'on', -1, -1, '-1', '', 0, 0, 0) ON DUPLICATE KEY UPDATE password=VALUES(password), realm=1001, enabled='on';" \
+	"INSERT INTO user_auth_realm (user_id, realm_id) SELECT 1001, realm_id FROM user_auth_realm WHERE user_id=1 ON DUPLICATE KEY UPDATE user_id=VALUES(user_id);" \
+	| "${DC[@]}" exec -T cacti-db mariadb -ucactiuser -pcactiuser cacti
+
+echo "[setup] complete"

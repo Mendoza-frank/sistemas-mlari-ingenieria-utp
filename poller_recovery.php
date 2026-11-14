@@ -1,0 +1,332 @@
+#!/usr/bin/env php
+<?php
+/*
+ +-------------------------------------------------------------------------+
+ | Copyright (C) 2004-2026 The Cacti Group                                 |
+ |                                                                         |
+ | This program is free software; you can redistribute it and/or           |
+ | modify it under the terms of the GNU General Public License             |
+ | as published by the Free Software Foundation; either version 2          |
+ | of the License, or (at your option) any later version.                  |
+ |                                                                         |
+ | This program is distributed in the hope that it will be useful,         |
+ | but WITHOUT ANY WARRANTY; without even the implied warranty of          |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           |
+ | GNU General Public License for more details.                            |
+ +-------------------------------------------------------------------------+
+ | Cacti: The Complete RRDtool-based Graphing Solution                     |
+ +-------------------------------------------------------------------------+
+ | This code is designed, written, and maintained by the Cacti Group. See  |
+ | about.php and/or the AUTHORS file for specific developer information.   |
+ +-------------------------------------------------------------------------+
+ | http://www.cacti.net/                                                   |
+ +-------------------------------------------------------------------------+
+*/
+
+if (function_exists('pcntl_async_signals')) {
+	pcntl_async_signals(true);
+} else {
+	declare(ticks = 100);
+}
+
+ini_set('output_buffering', 'Off');
+
+require(__DIR__ . '/include/cli_check.php');
+require_once($config['base_path'] . '/lib/poller.php');
+require_once($config['base_path'] . '/lib/boost.php');
+require_once($config['base_path'] . '/lib/dsstats.php');
+
+/**
+ * Displays version information. Used as part of Cacti's poller recovery functionality.
+ *
+ * @return void No value is returned.
+ */
+function display_version() {
+	$version = get_cacti_version();
+	print "Cacti Boost RRD Update Poller, Version $version " . COPYRIGHT_YEARS . "\n";
+}
+
+/**
+ * Displays the usage of the function. Used as part of Cacti's poller recovery functionality.
+ *
+ * @return void No value is returned.
+ */
+function display_help () {
+	display_version();
+
+	print "\nusage: poller_recovery.php [--verbose] [--force] [--debug]\n\n";
+	print "Cacti's Remote Poller Recovery Script.  This poller will transfer all offline boost records\n";
+	print "to the Main Cacti Pollers boost table\n";
+	print "Optional:\n";
+	print "    --verbose - Show details logs at the command line\n";
+	print "    --force   - Force the execution of a update process\n";
+	print "    --debug   - Display verbose output during execution\n\n";
+}
+
+/**
+ * Provides a generic means to catch exceptions to the Cacti log. Used as part of Cacti's poller
+ * recovery functionality.
+ *
+ * @param int $signo The signal that was thrown by the interface.
+ *
+ * @return void No value is returned.
+ */
+function sig_handler($signo) {
+	switch ($signo) {
+		case SIGTERM:
+		case SIGINT:
+			cacti_log('RECOVERY WARNING: Recovery Poller terminated by user', false, 'POLLER');
+
+			/* tell the main poller that we are done */
+			db_execute("REPLACE INTO settings (name, value) VALUES ('boost_poller_status', 'terminated - end time:" . date('Y-m-d G:i:s') ."')");
+
+			exit;
+			break;
+		default:
+			/* ignore all other signals */
+	}
+
+}
+
+/**
+ * Debug. Used as part of Cacti's poller recovery functionality.
+ *
+ * @param string $string The string.
+ *
+ * @return void No value is returned.
+ */
+function debug($string) {
+	global $debug;
+
+	if ($debug) {
+		print trim($string) . "\n";
+	}
+}
+
+/**
+ * Delete only rows which were acknowledged by the main collector. Used as part of Cacti's poller
+ * recovery functionality.
+ *
+ * @param array $rows The rows.
+ * @param mixed $conn The conn.
+ *
+ * @return bool True on success, false otherwise.
+ */
+function recovery_delete_acknowledged_rows($rows, $conn) {
+	foreach (array_chunk($rows, 500) as $chunk) {
+		$clauses = array();
+		$params  = array();
+
+		foreach ($chunk as $row) {
+			$clauses[] = '(local_data_id = ? AND rrd_name = ? AND time = ?)';
+			$params[]  = (int) $row['local_data_id'];
+			$params[]  = $row['rrd_name'];
+			$params[]  = $row['time'];
+		}
+
+		if (db_execute_prepared('DELETE FROM poller_output_boost WHERE ' . implode(' OR ', $clauses), $params, true, $conn) === false) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+global $local_db_cnn_id, $remote_db_cnn_id;
+
+$recovery_pid = db_fetch_cell("SELECT value FROM settings WHERE name='recovery_pid'", '', true, $local_db_cnn_id);
+
+/* process calling arguments */
+$parms = $_SERVER['argv'];
+array_shift($parms);
+
+$debug          = false;
+$forcerun       = false;
+$verbose        = false;
+$poller_id      = $config['poller_id'];
+
+if (cacti_sizeof($parms)) {
+	foreach($parms as $parameter) {
+		if (strpos($parameter, '=')) {
+			[$arg, $value] = explode('=', $parameter);
+		} else {
+			$arg = $parameter;
+			$value = '';
+		}
+
+		switch ($arg) {
+			case '-d':
+			case '--debug':
+				$debug = true;
+				break;
+			case '-f':
+			case '--force':
+				$forcerun = true;
+				break;
+			case '--verbose':
+				$verbose = true;
+				break;
+			case '--version':
+			case '-V':
+			case '-v':
+				display_version();
+				exit;
+			case '--help':
+			case '-H':
+			case '-h':
+				display_help();
+				exit;
+			default:
+				print 'ERROR: Invalid Parameter ' . $parameter . "\n\n";
+				display_help();
+				exit;
+		}
+	}
+}
+
+/* check for an invalid run location */
+if ($poller_id == 1) {
+	print "ERROR: This command is only to be run on remote Cacti Data Collectors\n";
+	exit(1);
+}
+
+/* install signal handlers for UNIX only */
+if (function_exists('pcntl_signal')) {
+	pcntl_signal(SIGTERM, 'sig_handler');
+	pcntl_signal(SIGINT, 'sig_handler');
+}
+
+/* take time and log performance data */
+$start = microtime(true);
+
+/* configuration variables */
+$record_limit = 150000;
+$sleep_time   = 1;
+
+/* global counter variables */
+$records_inserted = 0;
+$transfer_failed  = false;
+
+debug('About to start recovery processing');
+
+if (!empty($recovery_pid)) {
+	/* This branch reads false as "stale, clear the row and run", so it needs a
+	   probe where a pid we cannot signal counts as stale. That is the prior
+	   posix_kill($pid, 0) semantics, kept, with the pid_t bound added: a value
+	   the column can hold but pid_t cannot would otherwise narrow to -1, read
+	   as live, and retire recovery for good. */
+	$pid = cacti_process_signalable($recovery_pid, false);
+	if ($pid === false) {
+		/* we found a stale PID, so we delete it from the table */
+		db_execute_prepared("DELETE FROM settings WHERE name='recovery_pid'", array(), true, $local_db_cnn_id);
+
+		$run = true;
+	} else {
+		cacti_log('RECOVERY: Another recovery process is still running (PID=' . cacti_process_pid_for_log($recovery_pid) . ').', false, 'POLLER');
+
+		$run = false;
+	}
+} else {
+	$run = true;
+}
+
+if ($run) {
+	$my_pid = getmypid();
+
+	cacti_log('RECOVERY: No pid exists, starting recovery process (PID=' . $my_pid . ')!', false, 'POLLER');
+
+	db_execute_prepared('REPLACE INTO settings
+		(name, value)
+		VALUES (\'recovery_pid\', ?)',
+		array($my_pid), true, $local_db_cnn_id);
+
+	/* let the console know you are in recovery mode */
+	db_execute_prepared('UPDATE poller
+		SET status = 5
+		WHERE id = ?',
+		array($poller_id), true, $remote_db_cnn_id);
+
+	poller_push_reindex_data_to_poller(0, 0, true);
+
+	while (true) {
+		cacti_log('RECOVERY: Getting max_time for '. $record_limit . ' records.', false, 'POLLER');
+
+		$max_time = db_fetch_cell("SELECT MAX(time)
+			FROM (
+				SELECT time
+				FROM poller_output_boost
+				ORDER BY time ASC
+				LIMIT $record_limit
+			) AS rs", '', true, $local_db_cnn_id);
+
+		if (empty($max_time)) {
+			db_execute_prepared("DELETE FROM settings WHERE name='recovery_pid'", array(), true, $local_db_cnn_id);
+
+			break;
+		} else {
+			cacti_log('RECOVERY: Fetching records till time: ' . $max_time . ' from poller DB', false, 'POLLER');
+
+			$rows = db_fetch_assoc_prepared('SELECT *
+				FROM poller_output_boost
+				WHERE time <= ?
+				ORDER BY time ASC, local_data_id ASC, rrd_name ASC
+				LIMIT ' . (int) $record_limit,
+				array($max_time), true, $local_db_cnn_id);
+
+			if (cacti_sizeof($rows)) {
+				if (!boost_validate_poller_ownership($rows, $poller_id, $remote_db_cnn_id)) {
+					cacti_log('RECOVERY ERROR: Retaining local rows because their data-source ownership could not be verified.', false, 'POLLER');
+					$transfer_failed = true;
+					break;
+				}
+
+				$sql_array = array();
+
+				foreach($rows as $r) {
+					$sql_array[] = '(' . (int) $r['local_data_id'] . ',' .
+						db_qstr($r['rrd_name'], $remote_db_cnn_id) . ',' .
+						db_qstr($r['time'], $remote_db_cnn_id) . ',' .
+						db_qstr($r['output'], $remote_db_cnn_id) . ')';
+				}
+
+				$record_count = cacti_sizeof($sql_array);
+				cacti_log('RECOVERY: Writing ' . $record_count . ' records to main.', false, 'POLLER');
+
+				if (!boost_flush_output_batch($sql_array, $remote_db_cnn_id)) {
+					cacti_log('RECOVERY ERROR: Main collector did not acknowledge the Boost batch; retaining local rows.', false, 'POLLER');
+					$transfer_failed = true;
+					break;
+				}
+
+				if (!recovery_delete_acknowledged_rows($rows, $local_db_cnn_id)) {
+					cacti_log('RECOVERY ERROR: Unable to remove acknowledged local Boost rows; they will be retried idempotently.', false, 'POLLER');
+					$transfer_failed = true;
+					break;
+				}
+
+				$records_inserted += $record_count;
+			}
+
+			sleep($sleep_time);
+		}
+	}
+
+	db_execute_prepared("DELETE FROM settings WHERE name='recovery_pid'", array(), true, $local_db_cnn_id);
+
+	if (!$transfer_failed) {
+		/* let the console know you are in online mode */
+		db_execute_prepared('UPDATE poller
+			SET status = 2
+			WHERE id = ?', array($poller_id), false, $remote_db_cnn_id);
+	}
+} else {
+	debug('Recovery process still running, exiting');
+	cacti_log('RECOVERY: Recovery process still running for Poller ' . $poller_id . '.  PID is ' . $recovery_pid, false, 'POLLER');
+	exit(1);
+}
+
+$end = microtime(true);
+
+cacti_log('RECOVERY STATS: Time:' . round($end - $start, 2) . ' Records:' . $records_inserted, false, 'SYSTEM');
+
+exit($transfer_failed ? 1 : 0);

@@ -1,0 +1,19 @@
+{
+    "_comment": "Test-runner sandbox. Cacti's main composer.json uses vendor-dir=include/vendor/; Pest's directory walk does not find composer.json from there. Scoping Pest to tests/ keeps the main tree untouched and gives Pest a composer.json it can discover.",
+    "name": "cacti/tests",
+    "description": "Test-runner dependencies for the Cacti 1.2 test suites.",
+    "type": "project",
+    "license": "GPL-2.0-or-later",
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        },
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "require": {
+        "pestphp/pest": "^3"
+    }
+}

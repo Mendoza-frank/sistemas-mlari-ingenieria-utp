@@ -1,0 +1,1638 @@
+<?php
+/*
+ +-------------------------------------------------------------------------+
+ | Copyright (C) 2004-2026 The Cacti Group                                 |
+ |                                                                         |
+ | This program is free software; you can redistribute it and/or           |
+ | modify it under the terms of the GNU General Public License             |
+ | as published by the Free Software Foundation; either version 2          |
+ | of the License, or (at your option) any later version.                  |
+ |                                                                         |
+ | This program is distributed in the hope that it will be useful,         |
+ | but WITHOUT ANY WARRANTY; without even the implied warranty of          |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           |
+ | GNU General Public License for more details.                            |
+ +-------------------------------------------------------------------------+
+ | Cacti: The Complete RRDtool-based Graphing Solution                     |
+ +-------------------------------------------------------------------------+
+ | This code is designed, written, and maintained by the Cacti Group. See  |
+ | about.php and/or the AUTHORS file for specific developer information.   |
+ +-------------------------------------------------------------------------+
+ | http://www.cacti.net/                                                   |
+ +-------------------------------------------------------------------------+
+*/
+
+/**
+ * Replaces all variables contained in $form_array with their actual values. Used as part of
+ * Cacti's lib functionality.
+ *
+ * @param mixed &$form_array An array that contains all of the information needed to draw the html
+ *   form. see the arrays contained in include/global_settings.php for the exact syntax of this
+ *   array.
+ * @param mixed $arg1 An array that represents the |arg1:| variable (see include/global_form.php
+ *   for more details).
+ * @param mixed $arg2 An array that represents the |arg2:| variable (see include/global_form.php
+ *   for more details).
+ * @param mixed $arg3 An array that represents the |arg3:| variable (see include/global_form.php
+ *   for more details).
+ * @param mixed $arg4 An array that represents the |arg4:| variable (see include/global_form.php
+ *   for more details).
+ *
+ * @return array $form_array with all available variables substituted with their proper values.
+ */
+function inject_form_variables(&$form_array, $arg1 = array(), $arg2 = array(), $arg3 = array(), $arg4 = array()) {
+	$check_fields = array('id', 'value', 'array', 'friendly_name', 'description', 'sql', 'sql_print', 'form_id', 'items', 'tree_id');
+
+	/* loop through each available field */
+	if (cacti_sizeof($form_array)) {
+		foreach ($form_array as $field_name => $field_array) {
+			/* loop through each sub-field that we are going to check for variables */
+			foreach ($check_fields as $field_to_check) {
+				if (isset($field_array[$field_to_check]) && is_array($form_array[$field_name][$field_to_check])) {
+					/* if the field/sub-field combination is an array, resolve it recursively */
+					$form_array[$field_name][$field_to_check] = inject_form_variables($form_array[$field_name][$field_to_check], $arg1);
+				} elseif (isset($field_array[$field_to_check]) && !is_array($field_array[$field_to_check])) {
+					$count = 0;
+
+					/* loop through the $field_to_check and replace up to three times
+					 * for each arg1:arg2:arg3 variables.
+					 */
+					while (true) {
+						$matches = array();
+
+						//if (preg_match('/\|(arg[123]):([a-zA-Z0-9_]*)\|/', $form_array[$field_name][$field_to_check], $matches)) {
+						if (preg_match('/\|(arg[123]):([a-zA-Z0-9_]*)\|/', $field_array[$field_to_check], $matches)) {
+							$string   = $field_array[$field_to_check];
+
+							$matches0 = $matches[0];
+							$matches1 = $matches[1];
+							$matches2 = $matches[2];
+
+							/* an empty field name in the variable means don't treat this as an array */
+							if ($matches2 == '') {
+								if (is_array($$matches1)) {
+									/* the existing value is already an array, leave it alone */
+									$form_array[$field_name][$field_to_check] = $$matches1;
+								} else {
+									/* the existing value is probably a single variable */
+									$form_array[$field_name][$field_to_check] = str_replace($matches0, $$matches1, $field_array[$field_to_check]);
+								}
+							} else {
+								/* copy the value down from the array/key specified in the variable
+								 * replace up to three times for arg1:arg2:arg3 variables
+								 */
+								if (isset($$matches1)) {
+									if (is_array($$matches1)) {
+										$array = $$matches1;
+										if (is_array($array) && isset($array[$matches2]) && $array[$matches2] != '') {
+											$string = str_replace($matches0, $array[$matches2], $string);
+										} else {
+											$string = str_replace($matches0, '', $string);
+										}
+									}
+								}
+
+								// Double check to see if the replacement went as planned
+								$matches = array();
+								preg_match('/\|(arg[123]):([a-zA-Z0-9_]*)\|/', $string, $matches);
+
+								if (!cacti_sizeof($matches)) {
+									$form_array[$field_name][$field_to_check] = $string;
+
+									// No more arg[123]
+									break;
+								} else {
+									if ($field_to_check == 'sql') {
+										// Update the form value with the modified string
+										// Then update the field array string value to recheck
+
+										$form_array[$field_name][$field_to_check] = $string;
+										$field_array[$field_to_check] = $string;
+									} elseif (isset($form_array[$field_name]['default'])) {
+										// We did not find a match for this field value, use the default
+
+										$form_array[$field_name][$field_to_check] = $form_array[$field_name]['default'];
+									} else {
+										// We found no value, found no default, set to empty string
+
+										$form_array[$field_name][$field_to_check] = '';
+									}
+								}
+							}
+
+							/* if there are no more arg's, break.  Since some arg's
+							 * might not ever be replaced, continue counting till 3 as
+							 * in the special case of 'sql' for example.
+							 */
+							$additional = preg_match('/\|(arg[123]):([a-zA-Z0-9_]*)\|/', $string);
+							if (empty($additional)) {
+								break;
+							} elseif ($count >= 3) {
+								break;
+							} else {
+								$count++;
+							}
+						} else {
+							// No arg[123] found
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return $form_array;
+}
+
+/**
+ * Starts an HTML row with an alternating color scheme. Used as part of Cacti's lib functionality.
+ *
+ * @param string $row_color1 The first color to use.
+ * @param string $row_color2 The second color to use.
+ * @param int $row_value The value of the row which will be used to evaluate which color to
+ *   display for this particular row. must be an integer.
+ * @param string $row_id Used to allow js and ajax actions on this object.
+ *
+ * @return string The background color used for this particular row.
+ */
+function form_alternate_row_color($row_color1, $row_color2, $row_value, $row_id = '') {
+	if ($row_value % 2 == 1) {
+			$class='odd';
+			$current_color = $row_color1;
+	} else {
+		if ($row_color2 == '' || $row_color2 == 'E5E5E5') {
+			$class = 'even';
+		} else {
+			$class = 'even-alternate';
+		}
+		$current_color = $row_color1;
+	}
+
+	if ($row_id != '') {
+		print "<tr class='$class selectable tableRow' id='$row_id'>\n";
+	} else {
+		print "<tr class='$class tableRow'>\n";
+	}
+
+	return $current_color;
+}
+
+/**
+ * Starts an HTML row with an alternating color scheme. Used as part of Cacti's lib functionality.
+ *
+ * @param string $row_id The id of the row.
+ * @param bool $light Alternate odd style.
+ * @param bool $disabled If true, the row will not be selectable.
+ *
+ * @return void No value is returned.
+ */
+function form_alternate_row($row_id = '', $light = false, $disabled = false) {
+	static $i = 1;
+
+	if ($i % 2 == 1) {
+		$class = 'odd';
+	} elseif ($light) {
+		$class = 'even-alternate';
+	} else {
+		$class = 'even';
+	}
+
+	$i++;
+
+	if ($row_id != '' && !$disabled && substr($row_id, 0, 4) != 'row_') {
+		print "<tr class='$class selectable tableRow' id='$row_id'>\n";
+	} elseif (substr($row_id, 0, 4) == 'row_') {
+		print "<tr class='$class tableRow' id='$row_id'>\n";
+	} elseif ($row_id != '') {
+		print "<tr class='$class tableRow' id='$row_id'>\n";
+	} else {
+		print "<tr class='$class tableRow'>\n";
+	}
+}
+
+/**
+ * Starts an HTML row with specific class. Used as part of Cacti's lib functionality.
+ *
+ * @param mixed $row_id The id of the row.
+ * @param string $class The class of the row to use.
+ * @param bool $disabled True if the row is disabled.
+ *
+ * @return void No value is returned.
+ */
+function form_alternate_row_class($row_id = '', $class = 'tableRow', $disabled = false) {
+	if ($row_id != '' && !$disabled && substr($row_id, 0, 4) != 'row_') {
+		print "<tr class='$class selectable' id='$row_id'>";
+	} elseif (substr($row_id, 0, 4) == 'row_' || $row_id != '') {
+		print "<tr class='$class' id='$row_id'>";
+	} else {
+		print "<tr class='$class'>";
+	}
+}
+
+/**
+ * A wrapper to form_selectable_cell that escapes the contents. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param mixed $contents The readable portion of the.
+ * @param mixed $id The id of the object that will be highlighted.
+ * @param mixed $width The width of the table element.
+ * @param string $style_or_class The style or class to apply to the table element.
+ * @param string $title Optional title for the column.
+ *
+ * @return bool Bool.
+ */
+function form_selectable_ecell($contents, $id, $width = '', $style_or_class = '', $title = '') {
+	form_selectable_cell(html_escape($contents), $id, $width, $style_or_class, $title);
+}
+
+/**
+ * Format's a table row such that it can be highlighted using cacti's js actions. Used as part of
+ * Cacti's lib functionality.
+ *
+ * @param mixed $contents The readable portion of the.
+ * @param mixed $id The id of the object that will be highlighted.
+ * @param mixed $width The width of the table element.
+ * @param string $style_or_class The style or class to apply to the table element.
+ * @param string $title Optional title for the column.
+ *
+ * @return bool False if an error is encountered.
+ */
+function form_selectable_cell($contents, $id, $width = '', $style_or_class = '', $title = '') {
+	$output = '';
+
+	if ($style_or_class != '') {
+		if (strpos($style_or_class, ':') === false) {
+			$output = "class='nowrap " . $style_or_class . "'";
+			if ($width != '') {
+				$output .= " style='width:$width;'";
+			}
+		} else {
+			$output = "class='nowrap' style='" . $style_or_class;
+			if ($width != '') {
+				$output .= ";width:$width;";
+			}
+			$output .= "'";
+		}
+	} else {
+		$output = 'class="nowrap"';
+
+		if ($width != '') {
+			$output .= " style='width:$width;'";
+		}
+	}
+
+	if ($title != '') {
+		$wrapper = "<span class='cactiTooltipHint' style='padding:0px;margin:0px;' title='" . str_replace(array('"', "'"), '', $title) . "'>" . $contents . "</span>";
+	} else {
+		$wrapper = $contents;
+	}
+
+	print "\t<td " . $output . ">" . $wrapper . "</td>\n";
+}
+
+/**
+ * Format's a tables checkbox form element so that the cacti js actions work on it. Used as part
+ * of Cacti's lib functionality.
+ *
+ * @param string $title The text that will be displayed if your hover over the checkbox.
+ * @param string $id The unique identifier for the checkbox input element.
+ * @param bool $disabled Whether the checkbox should be disabled. Default is false.
+ *
+ * @return void No value is returned.
+ */
+function form_checkbox_cell($title, $id, $disabled = false) {
+	print "\t<td class='checkbox' style='width:1%;'>\n";
+	print "\t\t<input type='checkbox' title='" . html_escape($title) . "' class='checkbox" . ($disabled ? ' disabled':'') . "' " . ($disabled ? "disabled='disabled'":'') . " id='chk_" . $id . "' name='chk_" . $id . "'><label class='formCheckboxLabel' for='chk_" . $id . "'></label>\n";
+	print "\t</td>\n";
+}
+
+/**
+ * Ends a table row that is started with form_alternate_row. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @return void No value is returned.
+ */
+function form_end_row() {
+	print "</tr>\n";
+}
+
+/**
+ * Returns the boolean equivalent of an HTML checkbox value. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $html_boolean The value of the HTML checkbox.
+ *
+ * @return bool True or false based on the value of the HTML checkbox.
+ */
+function html_boolean($html_boolean) {
+	return ($html_boolean == 'on');
+}
+
+/**
+ * Returns the natural language equivalent of an HTML checkbox value. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $html_boolean The value of the HTML checkbox.
+ *
+ * @return string 'Selected' or 'Not Selected' based on the value of the HTML checkbox.
+ */
+function html_boolean_friendly($html_boolean) {
+	if ($html_boolean == 'on') {
+		return __('Selected');
+	} else {
+		return __('Not Selected');
+	}
+}
+
+/**
+ * Finds the proper CSS padding to apply based on the current client browser in use. Used as part
+ * of Cacti's lib functionality.
+ *
+ * @return string A CSS style string which should be used with an HTML checkbox control.
+ */
+function get_checkbox_style() {
+	return '';
+}
+
+/**
+ * Sets the required 'action' request variable. Used as part of Cacti's lib functionality.
+ *
+ * @param string $default The default action is not set.
+ *
+ * @return void Null.
+ */
+function set_default_action($default = '') {
+	if (!isset_request_var('action')) {
+		set_request_var('action', $default);
+	} elseif (is_array(get_nfilter_request_var('action'))) {
+		if (read_config_option('log_validation') == 'on') {
+			cacti_log('WARNING: Request variable \'action\' was passed as array in ' . $_SERVER['SCRIPT_NAME'] . '.', false, 'WEBUI');
+		}
+
+		set_request_var('action', $_REQUEST['action'][0]);
+	} else {
+		set_request_var('action', $_REQUEST['action']);
+	}
+}
+
+/**
+ * Unsets the request variable. Used as part of Cacti's lib functionality.
+ *
+ * @param string $variable The variable to unset.
+ *
+ * @return void Null.
+ */
+function unset_request_var($variable) {
+	global $_CACTI_REQUEST;
+
+	if (isset($_CACTI_REQUEST[$variable])) {
+		unset($_CACTI_REQUEST[$variable]);
+	}
+
+	if (isset($_REQUEST[$variable])) {
+		unset($_REQUEST[$variable]);
+	}
+}
+
+/**
+ * Checks to see if the $_REQUEST variable is set. Returns true or false. Used as part of Cacti's
+ * lib functionality.
+ *
+ * @param string $variable The variable to check.
+ *
+ * @return bool True or false.
+ */
+function isset_request_var($variable) {
+	return isset($_REQUEST[$variable]);
+}
+
+/**
+ * Checks to see if the $_REQUEST variable is empty. Returns true or false. Used as part of
+ * Cacti's lib functionality.
+ *
+ * @param string $variable The variable to check.
+ *
+ * @return bool True or false.
+ */
+function isempty_request_var($variable) {
+	if (isset_request_var($variable)) {
+		$value = $_REQUEST[$variable];
+
+		if (!empty($value)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Sets a given $_REQUEST variable and Cacti global. Used as part of Cacti's lib functionality.
+ *
+ * @param string $variable The variable to set.
+ * @param mixed $value The value to set the variable to.
+ *
+ * @return void Null.
+ */
+function set_request_var($variable, $value) {
+	global $_CACTI_REQUEST;
+
+	$_CACTI_REQUEST[$variable] = $value;
+	$_REQUEST[$variable]       = $value;
+	$_POST[$variable]          = $value;
+	$_GET[$variable]           = $value;
+}
+
+/**
+ * Returns the current value of a PHP $_REQUEST variable, optionally returning a default value if
+ * the request variable does not exist. When Cacti has 'log_validation' set on, it will log all
+ * instances where a request variable has not first been filtered. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $name The name of the request variable. this should be a valid key in the
+ *   $_REQUEST array.
+ * @param mixed $default The value to return if the specified name does not exist in the $_REQUEST
+ *   array.
+ *
+ * @return mixed The value of the request variable.
+ */
+function get_request_var($name, $default = '') {
+	global $_CACTI_REQUEST;
+
+	$log_validation = read_config_option('log_validation');
+
+	if (isset($_CACTI_REQUEST[$name])) {
+		return $_CACTI_REQUEST[$name];
+	} elseif (isset_request_var($name)) {
+		if ($log_validation == 'on') {
+			html_log_input_error($name);
+		}
+
+		set_request_var($name, $_REQUEST[$name]);
+
+		return $_REQUEST[$name];
+	} else {
+		return $default;
+	}
+}
+
+/**
+ * Deprecated - alias of get_request_var() returning a default value if the request variable does
+ * not exist. Used as part of Cacti's lib functionality.
+ *
+ * @param string $name The name of the request variable. this should be a valid key in the $_GET
+ *   array.
+ * @param mixed $default The value to return if the specified name does not exist in the $_GET
+ *   array.
+ *
+ * @return mixed The value of the request variable.
+ *
+ * @deprecated v1.0
+ */
+function get_request_var_request($name, $default = '') {
+	return get_request_var($name, $default);
+}
+
+/**
+ * Returns the current value of a PHP $_REQUEST variable and also sanitizing the value using the
+ * filter. It will also optionally return a default value if the request variable does not exist.
+ * Used as part of Cacti's lib functionality.
+ *
+ * @param string $name The name of the request variable. this should be a valid key in the
+ *   $_REQUEST array.
+ * @param int $filter The filter mode to use.
+ * @param array $options Used to pass to filter_var function or to hold the default value to be
+ *   returned.
+ *
+ * @return mixed The value of the request variable.
+ */
+function get_filter_request_var($name, $filter = FILTER_VALIDATE_INT, $options = array()) {
+	if (isset_request_var($name)) {
+		if (isempty_request_var($name)) {
+			set_request_var($name, get_nfilter_request_var($name));
+
+			return get_request_var($name);
+		} elseif (get_nfilter_request_var($name) == 'undefined') {
+			if (isset($options['default'])) {
+				set_request_var($name, $options['default']);
+
+				return $options['default'];
+			} else {
+				set_request_var($name, '');
+
+				return '';
+			}
+		} else {
+			if (get_nfilter_request_var($name) == '0') {
+				$value = '0';
+			} elseif (get_nfilter_request_var($name) == 'undefined') {
+				if (isset($options['default'])) {
+					$value = $options['default'];
+				} else {
+					$value = '';
+				}
+			} elseif (isempty_request_var($name)) {
+				$value = '';
+			} elseif ($filter == FILTER_VALIDATE_IS_REGEX) {
+				if (is_base64_encoded($_REQUEST[$name])) {
+					$_REQUEST[$name] = mb_convert_encoding(base64_decode($_REQUEST[$name]), 'UTF-8');
+				}
+
+				$valid = validate_is_regex($_REQUEST[$name]);
+				if ($valid === true) {
+					$value = $_REQUEST[$name];
+				} else {
+					$value = false;
+					$custom_error = $valid;
+				}
+			} elseif ($filter == FILTER_VALIDATE_IS_NUMERIC_ARRAY) {
+				$valid = true;
+				if (is_array($_REQUEST[$name])) {
+					foreach($_REQUEST[$name] AS $number) {
+						if (!is_numeric($number)) {
+							$valid = false;
+							break;
+						}
+					}
+				} else {
+					$valid = false;
+				}
+
+				if ($valid == true) {
+					$value = $_REQUEST[$name];
+				} else {
+					$value = false;
+				}
+			} elseif ($filter == FILTER_VALIDATE_IS_NUMERIC_LIST) {
+				$valid = true;
+				$values = preg_split('/,/', $_REQUEST[$name], -1, PREG_SPLIT_NO_EMPTY);
+				foreach($values AS $number) {
+					if (!is_numeric($number)) {
+						$valid = false;
+						break;
+					}
+				}
+
+				if ($valid == true) {
+					$value = $_REQUEST[$name];
+				} else {
+					$value = false;
+				}
+			} elseif (!cacti_sizeof($options)) {
+				$value = filter_var($_REQUEST[$name], $filter);
+			} else {
+				$value = filter_var($_REQUEST[$name], $filter, $options);
+			}
+		}
+
+		if ($value === null && isset($options['default']) && $options['default'] === null) {
+			$value = '';
+		}
+
+		if ($value === false) {
+			if ($filter == FILTER_VALIDATE_IS_REGEX) {
+				raise_message('custom', __('The regular expression "%s" is not valid. Error is %s', html_escape(get_nfilter_request_var($name)), html_escape($custom_error)), MESSAGE_LEVEL_ERROR);
+				set_request_var($name, '');
+			} else {
+				die_html_input_error($name, get_nfilter_request_var($name));
+			}
+		} else {
+			set_request_var($name, $value);
+
+			return $value;
+		}
+	} else {
+		if (isset($options['default'])) {
+			set_request_var($name, $options['default']);
+
+			return $options['default'];
+		} else {
+			return;
+		}
+	}
+}
+
+/**
+ * Returns the value of the request variable deferring any filtering. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $name The name of the request variable. this should be a valid key in the $_POST
+ *   array.
+ * @param mixed $default The value to return if the specified name does not exist in the $_POST
+ *   array.
+ *
+ * @return mixed The value of the request variable.
+ */
+function get_nfilter_request_var($name, $default = '') {
+	global $_CACTI_REQUEST;
+
+	if (isset($_CACTI_REQUEST[$name])) {
+		return $_CACTI_REQUEST[$name];
+	} elseif (isset($_REQUEST[$name])) {
+		return $_REQUEST[$name];
+	} else {
+		return $default;
+	}
+}
+
+/**
+ * Deprecated - returns the current value of a PHP $_POST variable, optionally returning a default
+ * value if the request variable does not exist. Used as part of Cacti's lib functionality.
+ *
+ * @param string $name The name of the request variable. this should be a valid key in the $_POST
+ *   array.
+ * @param mixed $default The value to return if the specified name does not exist in the $_POST
+ *   array.
+ *
+ * @return mixed The value of the request variable.
+ *
+ * @deprecated v1.0
+ */
+function get_request_var_post($name, $default = '') {
+	return get_nfilter_request_var($name, $default);
+}
+
+/**
+ * Validate, sanitize, and store request variables into the custom $_CACTI_REQUEST and desired
+ * session variables for Cacti filtering. Used as part of Cacti's lib functionality.
+ *
+ * @param array $filters An array keyed with the filter methods.
+ * @param string $sess_prefix A string to use to prefix the session variable. Valid filter include
+ *   those from PHP filter_var() function syntax. The format of the array is: array( 'varA' =>
+ *   array( 'filter' => value, 'pageset' => true, (optional) 'session' => sess_name, (optional)
+ *   'options' => mixed, 'default' => value), 'varB' => array( 'filter' => value, 'pageset' => true,
+ *   (optional) 'session' => sess_name, (optional) 'options' => mixed, 'default' => value), ... );
+ *   The 'pageset' attribute is optional, and when set, any changes between what the page returns
+ *   and what is set in the session result in the page number being returned to 1. The 'session'
+ *   attribute is also optional, and when set, all changes will be stored to the session variable
+ *   defined and not to session_prefix . '_' . $variable as the default. This allows for the concept
+ *   of global session variables such as 'sess_default_rows'. Validation 'filter' follow PHP
+ *   conventions including: FILTER_VALIDATE_BOOLEAN - Validate that the variable is boolean
+ *   FILTER_VALIDATE_EMAIL - Validate that the variable is an email FILTER_VALIDATE_FLOAT - Validate
+ *   that the variable is a float FILTER_VALIDATE_INT - Validate that the variable is an integer
+ *   FILTER_VALIDATE_IP - Validate that the variable is an IP address FILTER_VALIDATE_MAC - Validate
+ *   that the variable is a MAC Address FILTER_VALIDATE_REGEXP - Validate against a REGEX
+ *   FILTER_VALIDATE_URL - Validate that the variable is a valid URL FILTER_VALIDATE_IS_REGEX -
+ *   Validate if a filter variable is a valid regex FILTER_VALIDATE_IS_NUMERIC_ARRAY - Validate if a
+ *   filter variable is a numeric array FILTER_VALIDATE_IS_NUMERIC_LIST - Validate if a filter
+ *   variable is a comma delimited list of numbers Sanitization 'filters' follow PHP conventions
+ *   including: FILTER_SANITIZE_EMAIL - Sanitize the email address FILTER_SANITIZE_ENCODED -
+ *   URL-encode string FILTER_SANITIZE_MAGIC_QUOTES - Apply addslashes()
+ *   FILTER_SANITIZE_NUMBER_FLOAT - Remove all non float values FILTER_SANITIZE_NUMBER_INT - Remove
+ *   everything non int FILTER_SANITIZE_SPECIAL_CHARS - Escape special chars
+ *   FILTER_SANITIZE_FULL_SPECIAL_CHARS - Equivalent to htmlspecialchars adding ENT_QUOTES
+ *   FILTER_SANITIZE_STRING - Strip tags, optionally strip or encode special chars
+ *   FILTER_SANITIZE_URL - Remove all characters except letters, digits, etc. FILTER_UNSAFE_RAW -
+ *   Nothing and optional strip or encode.
+ *
+ * @return void The $_REQUEST variable validated and sanitized.
+ */
+function validate_store_request_vars($filters, $sess_prefix = '') {
+	global $_CACTI_REQUEST;
+
+	$changed = 0;
+	$custom_error = '';
+
+	if (cacti_sizeof($filters)) {
+		foreach($filters as $variable => $options) {
+			// Establish the session variable first
+			if ($sess_prefix != '') {
+				if (isset($options['session'])) {
+					$session_variable = $options['session'];
+				} elseif ($variable != 'rows') {
+					$session_variable = $sess_prefix . '_' . $variable;
+				} else {
+					$session_variable = 'sess_default_rows';
+				}
+
+				// Check for special cases 'clear' and 'reset'
+				if (isset_request_var('clear')) {
+					kill_session_var($session_variable);
+					unset_request_var($variable);
+				} elseif (isset_request_var('reset')) {
+					kill_session_var($session_variable);
+				} elseif (isset($options['pageset']) && $options['pageset'] == true) {
+					$changed += check_changed($variable, $session_variable);
+				}
+			}
+
+			if (!isset_request_var($variable)) {
+				if ($sess_prefix != '' && isset($_SESSION[$session_variable])) {
+					set_request_var($variable, $_SESSION[$session_variable]);
+				} elseif (isset($options['default'])) {
+					set_request_var($variable, $options['default']);
+				} else {
+					cacti_log("Filter Variable: $variable, Must have a default and none is set", false);
+					set_request_var($variable, '');
+				}
+			} else {
+				if (get_nfilter_request_var($variable) == '0') {
+					$value = '0';
+				} elseif (get_nfilter_request_var($variable) == 'undefined') {
+					if (isset($options['default'])) {
+						$value = $options['default'];
+					} else {
+						$value = '';
+					}
+				} elseif (isempty_request_var($variable)) {
+					$value = '';
+				} elseif ($options['filter'] == FILTER_VALIDATE_IS_REGEX) {
+					if (is_base64_encoded($_REQUEST[$variable])) {
+						$_REQUEST[$variable] = mb_convert_encoding(base64_decode($_REQUEST[$variable]), 'UTF-8');
+					}
+
+					$valid = validate_is_regex($_REQUEST[$variable]);
+					if ($valid === true) {
+						$value = $_REQUEST[$variable];
+					} else {
+						$value = false;
+						$custom_error = $valid;
+					}
+				} elseif ($options['filter'] == FILTER_VALIDATE_IS_NUMERIC_ARRAY) {
+					$valid = true;
+					if (is_array($_REQUEST[$variable])) {
+						foreach($_REQUEST[$variable] AS $number) {
+							if (!is_numeric($number)) {
+								$valid = false;
+								break;
+							}
+						}
+					} else {
+						$valid = false;
+					}
+
+					if ($valid == true) {
+						$value = $_REQUEST[$variable];
+					} else {
+						$value = false;
+					}
+				} elseif ($options['filter'] == FILTER_VALIDATE_IS_NUMERIC_LIST) {
+					$valid = true;
+					$values = preg_split('/,/', $_REQUEST[$variable], -1, PREG_SPLIT_NO_EMPTY);
+					foreach($values AS $number) {
+						if (!is_numeric($number)) {
+							$valid = false;
+							break;
+						}
+					}
+
+					if ($valid == true) {
+						$value = $_REQUEST[$variable];
+					} else {
+						$value = false;
+					}
+				} elseif (!isset($options['options'])) {
+					$value = filter_var($_REQUEST[$variable], $options['filter']);
+				} else {
+					$value = filter_var($_REQUEST[$variable], $options['filter'], $options['options']);
+				}
+
+				if ($value === false) {
+					if ($options['filter'] == FILTER_VALIDATE_IS_REGEX) {
+						raise_message('custom', __('The regular expression "%s" is not valid. Error is %s', html_escape(get_nfilter_request_var($variable)), html_escape($custom_error)), MESSAGE_LEVEL_ERROR);
+						set_request_var($variable, '');
+					} else {
+						die_html_input_error($variable, get_nfilter_request_var($variable), html_escape($custom_error));
+					}
+				} else {
+					set_request_var($variable, $value);
+				}
+			}
+
+			if ($sess_prefix != '') {
+				if (isset_request_var($variable)) {
+					$_SESSION[$session_variable] = get_request_var($variable);
+				} elseif (isset($_SESSION[$session_variable])) {
+					set_request_var($variable, $_SESSION[$session_variable]);
+				}
+			}
+		}
+
+		update_order_string();
+	}
+
+	if ($changed) {
+		set_request_var('page', 1);
+		set_request_var('changed', 1);
+		$_SESSION[$sess_prefix . '_page'] = 1;
+	} elseif (!isset_request_var('page') && isset($_SESSION[$sess_prefix . '_page'])) {
+		set_request_var('page', $_SESSION[$sess_prefix . '_page']);
+	}
+}
+
+/**
+ * Handles the cacti normalize sort direction. Used as part of Cacti's lib functionality.
+ *
+ * @param mixed $direction The direction.
+ *
+ * @return mixed The result of the operation, or false on failure.
+ */
+function cacti_normalize_sort_direction($direction) {
+	$direction = strtoupper((string) $direction);
+
+	return ($direction === 'DESC') ? 'DESC' : 'ASC';
+}
+
+/**
+ * Handles the cacti normalize sort column. Used as part of Cacti's lib functionality.
+ *
+ * @param mixed $column The column.
+ *
+ * @return string The resulting string.
+ */
+function cacti_normalize_sort_column($column) {
+	$column = trim((string) $column);
+
+	if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)*$/', $column)) {
+		return '';
+	}
+
+	return $column;
+}
+
+/**
+ * Handles the cacti build sort fragment. Used as part of Cacti's lib functionality.
+ *
+ * @param mixed $column The column.
+ * @param mixed $direction The direction.
+ *
+ * @return string The resulting string.
+ */
+function cacti_build_sort_fragment($column, $direction) {
+	if ($column === '') {
+		return '';
+	}
+
+	if ($column === 'hostname' || $column === 'ip' || $column === 'ip_address') {
+		return 'INET_ATON(' . $column . ') ' . cacti_normalize_sort_direction($direction);
+	}
+
+	return '`' . implode('`.`', explode('.', $column)) . '` ' . cacti_normalize_sort_direction($direction);
+}
+
+/**
+ * Creates a sort string for standard Cacti tables. Used as part of Cacti's lib functionality.
+ *
+ * @param bool $inplace If true, updates the order string in place using the current session data.
+ *
+ * @return void Null.
+ */
+function update_order_string($inplace = false) {
+	$page = get_order_string_page(false);
+
+	$order = '';
+
+	$request_column = get_request_var('sort_column');
+	if (!is_scalar($request_column)) {
+		$request_column = '';
+	}
+
+	if (strpos((string)$request_column, '(') === false && strpos((string)$request_column, '`') === false) {
+		$del = '`';
+	} else {
+		$del = '';
+	}
+
+	if ($inplace) {
+		if (!empty($_SESSION['sort_data'][$page])) {
+			$_SESSION['sort_string'][$page] = 'ORDER BY ';
+			foreach($_SESSION['sort_data'][$page] as $column => $direction) {
+				$column    = validate_sort_column($column, $page);
+				$direction = (strtoupper((string)$direction) == 'DESC' ? 'DESC' : 'ASC');
+
+				if ($column == '') continue;
+
+				if ($column == 'hostname' || $column == 'ip' || $column == 'ip_address') {
+					$order .= ($order != '' ? ', ':'') . 'INET_ATON(' . $column . ') ' . $direction;
+				} else {
+					$order .= ($order != '' ? ', ':'') . $column . ' ' . $direction;
+				}
+			}
+
+			if ($order != '') {
+				$_SESSION['sort_string'][$page] .= $order;
+			} else {
+				unset($_SESSION['sort_string'][$page]);
+			}
+		} else {
+			unset($_SESSION['sort_string'][$page]);
+		}
+	} else {
+		if (isset_request_var('clear')) {
+			unset($_SESSION['sort_data'][$page]);
+			unset($_SESSION['sort_string'][$page]);
+		} elseif (isset_request_var('add') && get_nfilter_request_var('add') == 'reset') {
+			unset($_SESSION['sort_data'][$page]);
+			unset($_SESSION['sort_string'][$page]);
+
+			$column    = validate_sort_column($request_column, $page);
+			$direction_raw = get_nfilter_request_var('sort_direction');
+			if (!is_scalar($direction_raw)) $direction_raw = '';
+			$direction = (strtoupper((string)$direction_raw) == 'DESC' ? 'DESC' : 'ASC');
+
+			if ($column != '') {
+				$_SESSION['sort_data'][$page][$column] = $direction;
+
+				if ($column == 'hostname' || $column == 'ip' || $column == 'ip_address') {
+					$_SESSION['sort_string'][$page] ='ORDER BY INET_ATON(' . $column . ") " . $direction;
+				} else {
+					$_SESSION['sort_string'][$page] = 'ORDER BY ' . $del . implode($del . '.'. $del, explode('.', $column)) . $del . ' ' . $direction;
+				}
+			}
+
+			update_order_string(true);
+		} elseif (isset_request_var('sort_column')) {
+			if (isset_request_var('reset')) {
+				unset($_SESSION['sort_data'][$page]);
+				unset($_SESSION['sort_string'][$page]);
+			}
+
+			$column    = validate_sort_column($request_column, $page);
+			$direction_raw = get_nfilter_request_var('sort_direction');
+			if (!is_scalar($direction_raw)) $direction_raw = '';
+			$direction = (strtoupper((string)$direction_raw) == 'DESC' ? 'DESC' : 'ASC');
+
+			if ($column != '') {
+				$_SESSION['sort_data'][$page][$column] = $direction;
+			}
+
+			if (!empty($_SESSION['sort_data'][$page])) {
+				$_SESSION['sort_string'][$page] = 'ORDER BY ';
+
+				foreach($_SESSION['sort_data'][$page] as $column => $direction) {
+					if (strpos((string)$column, '(') === false && strpos((string)$column, '`') === false) {
+						$del = '`';
+					} else {
+						$del = '';
+						break;
+					}
+				}
+
+				foreach($_SESSION['sort_data'][$page] as $column => $direction) {
+					$column    = validate_sort_column($column, $page);
+					$direction = (strtoupper((string)$direction) == 'DESC' ? 'DESC' : 'ASC');
+
+					if ($column == '') continue;
+
+					if ($column == 'hostname' || $column == 'ip' || $column == 'ip_address') {
+						$order .= ($order != '' ? ', ':'') . 'INET_ATON(' . $column . ") " . $direction;
+					} else {
+						$order .= ($order != '' ? ', ' . $del:$del) . implode($del . '.' . $del, explode('.', $column)) . $del . ' ' . $direction;
+					}
+				}
+
+				if ($order != '') {
+					$_SESSION['sort_string'][$page] .= $order;
+				} else {
+					unset($_SESSION['sort_string'][$page]);
+				}
+			} else {
+				unset($_SESSION['sort_string'][$page]);
+			}
+		} else {
+			unset($_SESSION['sort_data'][$page]);
+			unset($_SESSION['sort_string'][$page]);
+		}
+	}
+}
+
+/**
+ * Returns a valid order string for a table. Used as part of Cacti's lib functionality.
+ *
+ * @return string The order string.
+ */
+function get_order_string() {
+	$page        = get_order_string_page(true);
+
+	/* return the multi-column sort accumulated by update_order_string(), whose
+	   columns were already validated against the per-page allowlist on store */
+	if (isset($_SESSION['sort_string'][$page])) {
+		return $_SESSION['sort_string'][$page];
+	}
+
+	$sort_column = cacti_normalize_sort_column(get_nfilter_request_var('sort_column'));
+	$sort_dir    = cacti_normalize_sort_direction(get_nfilter_request_var('sort_direction'));
+
+	$request_column = get_request_var('sort_column');
+	if (!is_scalar($request_column)) {
+		$request_column = '';
+	}
+
+	if (strpos((string)$request_column, '(') === false && strpos((string)$request_column, '`') === false) {
+		$del = '`';
+	} else {
+		$del = '';
+	}
+
+	if ($sort_column != '') {
+		return cacti_build_sort_fragment($sort_column, $sort_dir) !== ''
+			? 'ORDER BY ' . cacti_build_sort_fragment($sort_column, $sort_dir)
+			: '';
+	} else {
+		$column    = validate_sort_column($request_column, $page);
+		$direction_raw = get_nfilter_request_var('sort_direction');
+		if (!is_scalar($direction_raw)) $direction_raw = '';
+		$direction = (strtoupper((string)$direction_raw) == 'DESC' ? 'DESC' : 'ASC');
+
+		if ($column == '') {
+			return '';
+		}
+
+		return 'ORDER BY ' . $del . implode($del . '.' . $del, explode('.', $column)) . $del . ' ' . $direction;
+	}
+}
+
+/**
+ * Validates a sort column against the session allowlist. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $column The column to validate.
+ * @param string $page The page identifier.
+ *
+ * @return string The validated/sanitized column.
+ */
+function validate_sort_column($column, $page) {
+	if (isset($_SESSION['valid_sort_columns'][$page])) {
+		if (in_array($column, $_SESSION['valid_sort_columns'][$page], true)) {
+			return $column;
+		} else {
+			return '';
+		}
+	}
+
+	return sanitize_sql_column($column);
+}
+
+/**
+ * Removes a specified column from the order string in the session data. This function retrieves
+ * the current page's order string and checks if the specified column exists in the session's sort
+ * data for that page. If the column is found, it removes the column from the sort data and
+ * updates the order string. Used as part of Cacti's lib functionality.
+ *
+ * @param string $column The name of the column to be removed from the order string.
+ *
+ * @return void No value is returned.
+ */
+function remove_column_from_order_string($column) {
+	$page = get_order_string_page(false);
+
+	if (isset($_SESSION['sort_data'][$page][$column])) {
+		unset($_SESSION['sort_data'][$page][$column]);
+		update_order_string(true);
+	}
+}
+
+/**
+ * Generates a unique order string for the current page. This function creates a unique identifier
+ * for the current page by combining a static page count, the current page name, and optional
+ * request variables such as 'action' and 'tab'. The page count is incremented with each call to
+ * ensure uniqueness. Used as part of Cacti's lib functionality.
+ *
+ * @param bool $increment Increment the page counter if true.
+ *
+ * @return string A unique order string for the current page.
+ */
+function get_order_string_page($increment = true) {
+	static $page_count = 0;
+
+	$page = $page_count . '_' . str_replace('.php', '', get_current_page());
+
+	if (isset_request_var('action')) {
+		$page .= '_' . get_nfilter_request_var('action');
+	}
+
+	if (isset_request_var('tab')) {
+		$page .= '_' . get_nfilter_request_var('tab');
+	}
+
+	if ($increment == true) {
+		$page_count++;
+	}
+
+	return $page;
+}
+
+/**
+ * Validate that a redirect URL points to an internal Cacti page. Prevents open redirect attacks
+ * by rejecting external URLs. Used as part of Cacti's lib functionality.
+ *
+ * @param string $url The URL to validate.
+ * @param string $default The URL to travel to upon failure.
+ *
+ * @return string The validated URL, or the provided $default if invalid.
+ */
+function validate_redirect_url($url = '', $default = 'index.php') {
+	if ($url === '') {
+		return $default;
+	}
+
+	$url = trim($url);
+	$url = str_replace('\\', '/', $url);
+
+	// Decode the url to make it readable if encoded
+	if (is_urlencoded($url)) {
+		$url = urldecode($url);
+		$url = str_replace('\\', '/', $url);
+	}
+
+	// reject URLs with protocol schemes (external redirects, javascript:, data:)
+	$bad_strings = array(
+		'javascript:',
+		'data:',
+		'vbscript:',
+		'mailto:',
+		'file:'
+	);
+
+	foreach($bad_strings as $bstring) {
+		if (stripos($url, $bstring) !== false) {
+			return $default;
+		}
+	}
+
+	// reject protocol-relative URLs
+	if (strpos($url, '//') === 0) {
+		return $default;
+	}
+
+	// reject URLs with newlines (header injection)
+	if (preg_match('/[\r\n]/', $url)) {
+		return $default;
+	}
+
+	// reject path traversal sequences
+	if (stripos($url, '..') !== false) {
+		return $default;
+	}
+
+	$parsed = parse_url($url);
+	if ($parsed === false) {
+		return $default;
+	}
+
+	$ref_host = isset($parsed['host']) ? $parsed['host'] : null;
+	$ref_user = isset($parsed['user']) ? $parsed['user'] : null;
+	$ref_pass = isset($parsed['pass']) ? $parsed['pass'] : null;
+	$ref_port = isset($parsed['port']) ? $parsed['port'] : null;
+	$ref_scheme = isset($parsed['scheme']) ? strtolower($parsed['scheme']) : null;
+
+	if ($ref_user !== null || $ref_pass !== null) {
+		return $default;
+	}
+
+	if ($ref_scheme !== null && !in_array($ref_scheme, array('http', 'https'), true)) {
+		return $default;
+	}
+
+	if ($ref_scheme !== null && $ref_host === null) {
+		return $default;
+	}
+
+	$srv_host = null;
+
+	/* Use the server-configured name rather than the client-supplied Host header. */
+	if (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] != '') {
+		$srv_host = preg_replace('/:\d+$/', '', $_SERVER['SERVER_NAME']);
+	}
+
+	if ($ref_host !== null) {
+		if ($srv_host === null || strtolower($ref_host) !== strtolower($srv_host)) {
+			return $default;
+		}
+	}
+
+	if ($ref_port !== null) {
+		if (!isset($_SERVER['SERVER_PORT']) || (string)$ref_port !== (string)$_SERVER['SERVER_PORT']) {
+			return $default;
+		}
+	}
+
+	$ref_path  = isset($parsed['path']) ? $parsed['path'] : '';
+	$ref_query = isset($parsed['query']) ? $parsed['query'] : null;
+
+	if ($ref_path !== '') {
+		if (strpos($ref_path, '//') === 0) {
+			return $default;
+		}
+
+		if ($ref_path[0] !== '/' && strpos($ref_path, ':') !== false) {
+			return $default;
+		}
+	}
+
+	$safe = sanitize_uri($ref_path . ($ref_query !== null ? '?' . $ref_query : ''));
+	if ($safe === '' || strpos($safe, '//') === 0) {
+		return $default;
+	}
+
+	return $safe;
+}
+
+/**
+ * Builds a forced-HTTPS redirect using a server-configured host name. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $server_name  The web server's configured name, optionally
+ *                              followed by ':port' (IPv6 literals must be
+ *                              bracketed first, e.g. '[::1]:8080').
+ * @param string $request_uri  The requested local path and query string.
+ * @param string $default_path A local fallback when the request URI is invalid.
+ *
+ * @return string A safe absolute HTTPS URL, or an empty string for an invalid host.
+ *
+ * @psalm-taint-escape header
+ */
+function cacti_build_https_redirect_url(string $server_name, string $request_uri, string $default_path = '/') : string {
+	$server_name = trim($server_name);
+
+	if ($server_name === '') {
+		return '';
+	}
+
+	/* split an optional port off first; a bracketed IPv6 literal keeps its
+	 * embedded colons and is only split on a ']:port' suffix, so a bare,
+	 * unbracketed IPv6 address (multiple colons, no brackets) is never
+	 * mistaken for a host:port pair */
+	if ($server_name[0] === '[') {
+		$close = strpos($server_name, ']');
+
+		if ($close === false) {
+			return '';
+		}
+
+		$host = substr($server_name, 1, $close - 1);
+		$port = '';
+
+		if (isset($server_name[$close + 1])) {
+			if ($server_name[$close + 1] !== ':') {
+				return '';
+			}
+
+			$port = substr($server_name, $close + 2);
+		}
+	} elseif (substr_count($server_name, ':') === 1) {
+		[$host, $port] = explode(':', $server_name, 2);
+	} else {
+		$host = $server_name;
+		$port = '';
+	}
+
+	if ($port !== '' && (!ctype_digit($port) || (int) $port < 1 || (int) $port > 65535)) {
+		return '';
+	}
+
+	if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false) {
+		$host = '[' . $host . ']';
+	} elseif (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false &&
+		filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)  === false) {
+		return '';
+	}
+
+	$path = validate_redirect_url($request_uri, $default_path);
+	$path = '/' . ltrim($path, '/');
+
+	return 'https://' . $host . ($port !== '' ? ':' . $port : '') . $path;
+}
+
+/**
+ * Resolves a trusted host for the force_https redirect from the admin-configured
+ * base_url, in preference to the request's Host/SERVER_NAME.
+ *
+ * SERVER_NAME mirrors the client Host header under the common Apache default
+ * UseCanonicalName Off, so validating its format alone (see
+ * cacti_build_https_redirect_url()) still lets an attacker redirect to another
+ * valid-looking hostname. base_url is the trusted source Cacti already uses for
+ * absolute URLs, so it is preferred when configured.
+ *
+ * @return string A bare host, or 'host:port' when base_url configures a
+ *                non-default port, safe to pass to
+ *                cacti_build_https_redirect_url(), or '' when base_url is unset.
+ */
+function cacti_force_https_host() : string {
+	$base = trim((string) read_config_option('base_url'));
+
+	if ($base === '') {
+		return '';
+	}
+
+	/* base_url is stored in scheme-less form (e.g. 'monitor.example/cacti')
+	 * until the first linked graph report is rendered, see the same check in
+	 * lib/reports.php; parse_url() cannot extract a host without a scheme, so
+	 * add one for parsing purposes only. */
+	$parseable = (substr($base, 0, 4) === 'http') ? $base : 'http://' . $base;
+
+	$host = parse_url($parseable, PHP_URL_HOST);
+	$port = parse_url($parseable, PHP_URL_PORT);
+
+	if (!is_string($host) || $host === '') {
+		return '';
+	}
+
+	/* bracket a literal IPv6 host before appending a port so the two remain
+	 * unambiguous when cacti_build_https_redirect_url() splits them back apart */
+	if (strpos($host, ':') !== false) {
+		$host = '[' . $host . ']';
+	}
+
+	return ($port !== null && $port !== false) ? $host . ':' . $port : $host;
+}
+
+/**
+ * Validates if the given string is a valid regular expression. This function checks if the
+ * provided regular expression is valid and safe to use. It prevents exploits by limiting the
+ * length of the regular expression to 50 bytes and disallowing the use of the semicolon
+ * character. Used as part of Cacti's lib functionality.
+ *
+ * @param string $regex The regular expression to validate.
+ *
+ * @return bool|string Returns true if the regular expression is valid, otherwise returns an error
+ *   message string.
+ */
+function validate_is_regex($regex) {
+	if ($regex == '') {
+		return true;
+	}
+
+	/**
+	 * Prevent exploits from encoded Regular expressions that can cause
+	 * injections in MariaDB and MySQL.  We do this by limiting the
+	 * length of the regular expression to 50 bytes or less.
+	 */
+	if (strlen($regex) > 50) {
+		return __('Cacti regular expressions are limited to 50 characters only for security reasons.');
+	}
+
+	if (strpos($regex, ';') !== false) {
+		return __('Cacti regular expressions can not includes the semi-color character.');
+	}
+
+	restore_error_handler();
+
+	if (@preg_match("'" . $regex . "'", '') !== false) {
+		if (!defined('IN_CACTI_INSTALL')) {
+			set_error_handler('CactiErrorHandler');
+		}
+
+		return true;
+	}
+
+	$last_error = error_get_last();
+
+	$php_error = isset($last_error['message'])
+		? trim(str_replace('preg_match():', '', $last_error['message']))
+		: __('Invalid regular expression.');
+
+	$errors = array(
+		PREG_INTERNAL_ERROR         => __('There was an internal error!'),
+		PREG_BACKTRACK_LIMIT_ERROR  => __('Backtrack limit was exhausted!'),
+		PREG_RECURSION_LIMIT_ERROR  => __('Recursion limit was exhausted!'),
+		PREG_BAD_UTF8_ERROR         => __('Bad UTF-8 error!'),
+		PREG_BAD_UTF8_OFFSET_ERROR  => __('Bad UTF-8 offset error!'),
+	);
+
+	$error = preg_last_error();
+
+	if (!defined('IN_CACTI_INSTALL')) {
+		set_error_handler('CactiErrorHandler');
+	}
+
+	if (empty($error) || ($error === PREG_INTERNAL_ERROR && $php_error !== '')) {
+		return $php_error;
+	} else {
+		return $errors[$error] ?? $php_error;
+	}
+}
+
+/**
+ * Validate a regular expression for use with db_qstr_rlike(). Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $regex The regular expression to validate.
+ *
+ * @return bool|string True when safe, otherwise a printable error message.
+ */
+function validate_is_rlike_regex($regex) {
+	$validation = validate_is_regex($regex);
+
+	if ($validation !== true) {
+		return $validation;
+	}
+
+	if (strpbrk($regex, '|{}') !== false) {
+		return __('Cacti RLIKE filters do not support alternation or bounded-repeat characters.');
+	}
+
+	return true;
+}
+
+/**
+ * Finds the correct value of a variable that is being cached as a session variable on an HTML
+ * form. Used as part of Cacti's lib functionality.
+ *
+ * @param string $request_var_name The array index name for the request variable.
+ * @param string $session_var_name The array index name for the session variable.
+ * @param mixed $default_value The default value to use if values cannot be obtained using the
+ *   session or request array.
+ *
+ * @return void No value is returned.
+ */
+function load_current_session_value($request_var_name, $session_var_name, $default_value) {
+	if (isset_request_var($request_var_name)) {
+		$_SESSION[$session_var_name] = get_request_var($request_var_name);
+	} elseif (isset($_SESSION[$session_var_name])) {
+		set_request_var($request_var_name, $_SESSION[$session_var_name]);
+	} else {
+		set_request_var($request_var_name, $default_value);
+	}
+}
+
+/**
+ * Given a device's status, return the colored text in HTML format suitable for display. Used as
+ * part of Cacti's lib functionality.
+ *
+ * @param bool $disabled Bool - true if the device is disabled, false is it is not.
+ * @param int $status Int - The device status as defined in global_constants.php.
+ * @param int $thold_failure_count Int - The thold failure count is thold is installed.
+ * @param int $status_event_count Int - The host status event count is thold is installed.
+ *
+ * @return string A string containing html that represents the device's current status.
+ */
+function get_colored_device_status($disabled, $status, $thold_failure_count = -1, $status_event_count = -1) {
+	if ($disabled) {
+		return "<span class='deviceStatus deviceDisabled'>" . __('Disabled') . "</span>";
+	} else {
+		if ($status != HOST_RECOVERING && $thold_failure_count > 0) {
+			if ($status_event_count >= $thold_failure_count) {
+				return "<span class='deviceStatus deviceDown'>" . __('Down (Thold)') . "</span>";
+			}
+		}
+
+		switch ($status) {
+			case HOST_DOWN:
+				return "<span class='deviceStatus deviceDown'>" . __('Down') . "</span>";
+				break;
+			case HOST_RECOVERING:
+				return "<span class='deviceStatus deviceRecovering'>" . __('Recovering') . "</span>";
+				break;
+			case HOST_UP:
+				return "<span class='deviceStatus deviceUp'>" . __('Up') . "</span>";
+				break;
+			case HOST_ERROR:
+				return "<span class='deviceStatus deviceError'>" . __('Error') . "</span>";
+				break;
+			default:
+				return "<span class='deviceStatus deviceUnknown'>" . __('Unknown') . "</span>";
+				break;
+		}
+	}
+}
+
+/**
+ * Determine the correct graph start time selected using the timespan selector. Used as part of
+ * Cacti's lib functionality.
+ *
+ * @return mixed The number of seconds relative to now where the graph should begin.
+ */
+function get_current_graph_start() {
+	if (isset($_SESSION['sess_current_timespan_begin_now']) && is_numeric($_SESSION['sess_current_timespan_begin_now'])) {
+		return $_SESSION['sess_current_timespan_begin_now'];
+	} else {
+		return '-' . DEFAULT_TIMESPAN;
+	}
+}
+
+/**
+ * Determine the correct graph end time selected using the timespan selector. Used as part of
+ * Cacti's lib functionality.
+ *
+ * @return mixed The number of seconds relative to now where the graph should end.
+ */
+function get_current_graph_end() {
+	if (isset($_SESSION['sess_current_timespan_end_now']) && is_numeric($_SESSION['sess_current_timespan_end_now'])) {
+		return $_SESSION['sess_current_timespan_end_now'];
+	} else {
+		return '0';
+	}
+}
+
+/**
+ * Display the text passed to the function as a tooltip. Used as part of Cacti's lib
+ * functionality.
+ *
+ * @param string $text The text to display in the tooltip.
+ *
+ * @return string Null.
+ */
+function display_tooltip($text) {
+	if ($text != '') {
+		return '<div class="cactiTooltipHint fa fa-question-circle"><span style="display:none;">' . $text . "</span></div>\n";
+	} else {
+		return '';
+	}
+}
+
+/**
+ * Generates the html necessary to present the user with a list of pages limited in length and
+ * number of rows per page. Used as part of Cacti's lib functionality.
+ *
+ * @param int $current_page The current page number the current page number.
+ * @param int $pages_per_screen The maximum number of pages allowed on a single screen. odd
+ *   numbered values for this argument are preferred for equality reasons.
+ * @param int $rows_per_page The number of rows per page.
+ * @param int $total_rows The total number of available rows.
+ * @param string $url The url string to prepend to each page click.
+ * @param string $page_var The query parameter name for the page number (default is 'page').
+ * @param string $return_to The ID of the HTML element to update with the new page content
+ *   (default is '').
+ *
+ * @return string A string containing html that represents the a page list.
+ */
+function get_page_list($current_page, $pages_per_screen, $rows_per_page, $total_rows, $url, $page_var = 'page', $return_to = '') {
+
+	// By current design, $pages_per_screen means number of page no in mid of nav bar
+	// when $total_pages is larger than $pages_per_screen + 2(first and last)
+	// So actual $pages_per_screen should be $pages_per_screen+2
+	$pages_per_screen += 2;
+	$url_page_select = "<ul class='pagination'>";
+
+	if (strpos($url, '?') !== false) {
+		$url .= '&';
+	} else {
+		$url .= '?';
+	}
+
+	$url_ellipsis = '<li><span>...</span></li>';
+
+	if ($rows_per_page <= 0) {
+		$total_pages = 0;
+	} else {
+		$total_pages = ceil($total_rows / $rows_per_page);
+	}
+
+	$start_page = max(1, ($current_page - floor(($pages_per_screen - 1) / 2)));
+	$end_page = min($total_pages, ($current_page + floor(($pages_per_screen - 1) / 2)));
+
+	if ($total_pages <= $pages_per_screen) {
+		$start_page = 2;
+		$end_page = $total_pages - 1;
+	} else {
+		$start_page = max(2, ($current_page - floor(($pages_per_screen - 3) / 2)));
+		/*When current_page > (pages_per_screen - 1) / 2*/
+		$end_page = min($total_pages - 1, ($current_page + floor(($pages_per_screen - 3) / 2)));
+
+		/* adjust if we are close to the beginning of the page list */
+		if ($current_page <= ceil(($pages_per_screen) / 2)) {
+			$end_page += ($pages_per_screen - $end_page - 1);
+		}
+
+		/* adjust if we are close to the end of the page list */
+		if (($total_pages - $current_page) < ceil(($pages_per_screen) / 2)) {
+			$start_page -= (($pages_per_screen - ($end_page - $start_page)) - 3);
+		}
+
+		/* stay within limits */
+		$start_page = max(2, $start_page);
+		$end_page = min($total_pages - 1, $end_page);
+	}
+
+	if ($total_pages > 0) {
+		if ($current_page == 1) {
+			$url_page_select .= "<li><a data-url='" . html_escape($url . $page_var . "=1") . "' data-return='" . html_escape($return_to) . "' href='#' class='active'>1</a></li>";
+		} else {
+			$url_page_select .= "<li><a data-url='" . html_escape($url . $page_var . "=1") . "' data-return='" . html_escape($return_to) . "' href='#'>1</a></li>";
+		}
+	}
+
+	for ($page_number=0; (($page_number+$start_page) <= $end_page); $page_number++) {
+		$page = $page_number + $start_page;
+
+		if ($page_number < $pages_per_screen) {
+			if ($page_number == 0 && $start_page > 2) {
+				$url_page_select .= $url_ellipsis;
+			}
+
+			if ($current_page == $page) {
+				$url_page_select .= "<li><a data-url='" . html_escape($url . $page_var . "=" . $page) . "' data-return='" . html_escape($return_to) . "' href='#' class='active'>$page</a></li>";
+			} else {
+				$url_page_select .= "<li><a data-url='" . html_escape($url . $page_var . "=" . $page) . "' data-return='" . html_escape($return_to) . "' href='#'>$page</a></li>";
+			}
+		}
+	}
+
+	if ($total_pages - 1 > $end_page) {
+		$url_page_select .= $url_ellipsis;
+	}
+
+	if ($total_pages > 1) {
+		if ($current_page == $total_pages) {
+			$url_page_select .= "<li><a data-url='" . html_escape($url . $page_var . "=" . $total_pages) . "' data-return='" . html_escape($return_to) . "' href='#' class='active'>$total_pages</a></li>";
+		} else {
+			$url_page_select .= "<li><a data-url='" . html_escape($url . $page_var . "=" . $total_pages) . "' data-return='" . html_escape($return_to) . "' href='#'>$total_pages</a></li>";
+		}
+	}
+
+	$url_page_select .= '</ul>';
+
+	return $url_page_select;
+}

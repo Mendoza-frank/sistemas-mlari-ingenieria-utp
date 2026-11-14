@@ -1,0 +1,2628 @@
+/*
+ +-------------------------------------------------------------------------+
+ | Copyright (C) 2004-2026 The Cacti Group                                 |
+ |                                                                         |
+ | This program is free software; you can redistribute it and/or           |
+ | modify it under the terms of the GNU General Public License             |
+ | as published by the Free Software Foundation; either version 2          |
+ | of the License, or (at your option) any later version.                  |
+ |                                                                         |
+ | This program is distributed in the hope that it will be useful,         |
+ | but WITHOUT ANY WARRANTY; without even the implied warranty of          |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           |
+ | GNU General Public License for more details.                            |
+ +-------------------------------------------------------------------------+
+ | Cacti: The Complete RRDtool-based Graphing Solution                     |
+ +-------------------------------------------------------------------------+
+ | This code is designed, written, and maintained by the Cacti Group. See  |
+ | about.php and/or the AUTHORS file for specific developer information.   |
+ +-------------------------------------------------------------------------+
+ | http://www.cacti.net/                                                   |
+ +-------------------------------------------------------------------------+
+*/
+
+/* main styles */
+
+html, body {
+	height: 100%;
+	width: 100%;
+	margin: 0px;
+	overflow: auto;
+}
+
+body, table, tr, td, textarea {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: 11px;
+}
+
+textarea {
+	padding: 5px;
+	width: 400px;
+	height: 100px;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
+body {
+	background-color: #FFFFFF;
+	background-repeat: repeat-y;
+}
+
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	border: none;
+	text-align: left;
+}
+
+td, th, select {
+	padding: 0px;
+	margin: 0px;
+}
+
+th {
+	border-right: 1px groove white;
+	white-space: nowrap;
+	user-select: none;
+	-ms-user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+}
+
+img {
+	border: none;
+	vertical-align: middle;
+}
+
+i.fa, i.fas, i.fab, i.far, i.fal {
+	padding: 0px 3px;
+	vertical-align: middle;
+	font-size: 13px;
+}
+
+.menu_parent i.fa, .menu_parent i.fas, .menu_parent i.fab, .menu_parent i.far, .menu_parent i.fal {
+	color: white;
+}
+
+div {
+	display: block;
+}
+
+fieldset {
+	border: none;
+	padding: 0px;
+	margin: 0px;
+}
+
+hr.menu {
+	border: 0;
+	height: 1px;
+	background: #333;
+	background-image: linear-gradient(to right, #ccc, #333, #ccc);
+}
+
+.reindex_methods span {
+	font-size: 9px;
+}
+
+.checkboxLabel {
+	display: none;
+}
+
+.realms .checkboxLabel {
+	display: inline !important;
+}
+
+/* links */
+
+a, a:active, a:visited {
+	color: blue;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+	color: #333333;
+}
+
+th .fa {
+	margin-top: -5px;
+	position: absolute;
+	right: 3px;
+	top: 50%;
+}
+
+tr.selectable td {
+	padding: 3px;
+}
+
+#main {
+	display: none;
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+input {
+	padding: 0.4em;
+	font-size: 12px;
+	max-width: 400px;
+}
+
+select {
+	padding: 2px;
+	font-size: 12px;
+}
+
+tr.selected {
+	background-color: #bcd6ef;
+}
+
+tr.selectable:hover:not(.selected) {
+	background: rgba(0, 67, 140, 0.1);
+}
+
+label {
+	white-space: nowrap;
+}
+
+.tableRow {
+	line-height: 18px;
+}
+
+.tableRowGraph td {
+	padding: 3px;
+	vertical-align: top;
+}
+
+.nowrap {
+	white-space: nowrap;
+}
+
+.wrap {
+	white-space: normal !important;
+}
+
+.top {
+	vertical-align: top;
+}
+
+.right {
+	text-align: right !important;
+}
+
+.left {
+	text-align: left !important;
+}
+
+.center {
+	text-align: center !important;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.flexContainer {
+	display: flex;
+	flex-wrap: wrap;
+	margin-left: auto;
+	margin-right: auto;
+	justify-content: flex-start;
+}
+
+.flexChild {
+	display: inline-block;
+	margin-top: 5px;
+	flex-basis: 20%;
+	min-width: 200px;
+}
+
+.usermenudown {
+	background: transparent url('./../../../images/bullet_arrow_down.png') no-repeat center right;
+}
+
+.usermenuup {
+	background: transparent url('./../../../images/bullet_arrow_up.png') no-repeat center right;
+}
+
+.user {
+	padding-right: 16px;
+	font-weight: bold;
+	cursor: pointer;
+}
+
+.badpassword_message {
+	padding: 2px;
+	color: red;
+	font-size: 1.0em !important;
+	vertical-align: bottom;
+}
+
+.badpassword {
+	padding: 4px;
+	color: red;
+	font-size: 1.5em !important;
+	vertical-align: bottom;
+}
+
+.goodpassword {
+	padding: 4px;
+	color: green;
+	font-size: 1.5em !important;
+	vertical-align: bottom;
+}
+
+.associated {
+	color: green;
+	font-weight: bold;
+}
+
+.notAssociated {
+	color: red;
+	font-weight: bold;
+}
+
+.disabled_row span, .disabled_row td, .disabled_row a {
+	color: grey;
+}
+
+.disabled {
+	color: grey;
+	font-weight: bold;
+}
+
+.idle {
+	color: green;
+	font-weight: bold;
+}
+
+.running {
+	color: orange;
+}
+
+.errored {
+	color: red;
+	font-weight: bold;
+}
+
+.newObject {
+	color: blue;
+}
+
+.updateObject {
+	color: grey;
+}
+
+.unmetDependency {
+	color: red;
+}
+
+.foundDependency {
+	color: navy;
+}
+
+.success {
+	color: green;
+}
+
+.failed {
+	color: red;
+}
+
+.accessGranted {
+	color: green;
+	font-weight: bold;
+}
+
+.accessGrantedItem {
+	color: green;
+}
+
+.accessRestricted {
+	color: red;
+	font-weight: bold;
+}
+
+.accessRestrictedItem {
+	color: red;
+}
+
+.deleteIcon {
+	width: 10px;
+	height: 10px;
+	cursor: pointer;
+	padding: 2px;
+	border: none;
+}
+
+.graphDrillDown {
+	vertical-align: top;
+	align-self: left;
+	z-index: 4;
+	padding: 3px;
+	height: 100%;
+	width: 20px;
+}
+
+.iconWrapper {
+}
+
+.deleteMarker {
+	color: red !important;
+	height: 14px !important;
+	vertical-align: middle;
+	text-decoration: none !important;
+	padding-right: 7px !important;
+}
+
+.deleteMarker:hover {
+	text-decoration: none !important;
+}
+
+.deleteMarkerDisabled {
+	color: grey !important;
+	height: 14px !important;
+	vertical-align: middle;
+	text-decoration: none !important;
+	padding-right: 7px !important;
+}
+
+.deleteMarkerDisabled:hover {
+	text-decoration: none !important;
+}
+
+.drillDown {
+	cursor: pointer;
+	font-size: 15px;
+}
+
+.actionCog {
+	color:#FDAC53 !important;
+}
+
+.fileCSV {
+	color:#9BB7D4 !important;
+}
+
+.threeBars {
+	color:#B55A30 !important;
+}
+
+.editDevice {
+	color:#F5DF4D !important;
+}
+
+.editTemplate {
+	color:#0072B5 !important;
+}
+
+.realTime {
+	color:#A0DAA9 !important;
+}
+
+.spikeKill {
+	color:#E9897E !important;
+}
+
+.viewSources {
+	color:#56C6A9 !important;
+}
+
+.moveArrow {
+	color: #00438C !important;
+	height: 14px !important;
+	display: inline-block;
+	width: 11.75px;
+	font-size: 14px !important;
+	vertical-align: middle;
+	text-decoration: none !important;
+}
+
+.moveArrow:hover {
+	text-decoration: none !important;
+}
+
+.moveArrowNone {
+	display: inline-block;
+	width: 14.75px;
+}
+
+.action, .shiftArrow, .calendar {
+	cursor: pointer;
+	padding: 2px;
+}
+
+.cactiTooltipHint {
+	cursor: pointer;
+	color: #6D88AD;
+}
+
+.monoSpace {
+	font-size: 9px;
+	font-family: monospace;
+}
+
+.utilityPick {
+	width: 200px;
+}
+
+.itemlist {
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.realms {
+	width: 20%;
+	vertical-align: top;
+	white-space: nowrap;
+}
+
+.spikeKillMenuItem {
+	padding-left: 0.5em !important;
+	display: block;
+}
+
+.deviceUp {
+	color: rgba(40, 180, 40, 1.0) !important;
+}
+
+.deviceDown {
+	color: #FF0000 !important;
+}
+
+.deviceUnknown {
+	color: #0000FF !important;
+}
+
+.deviceDisabled {
+	color: #A1A1A1 !important;
+}
+
+.deviceRecovering {
+	color: #FF8F1E !important;
+}
+
+.deviceError {
+	color: #750F7D !important;
+}
+
+.deviceDownMuted {
+	color: #FFE333 !important;
+}
+
+.deviceThreshold {
+	color: #FFA833 !important;
+}
+
+.deviceUnmonitored {
+	color: rgba(250, 253, 158, 0.8) !important;
+}
+
+.deviceWarning {
+	color: #AA7807 !important;
+}
+
+.deviceAlert {
+	color: #660000 !important;
+}
+
+.deviceUpBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: rgba(148, 179, 107, 0.8);
+}
+
+.deviceDownBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #FF0000;
+}
+
+.deviceUnknownBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #0000FF;
+}
+
+.deviceDisabledBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #A1A1A1;
+}
+
+.deviceRecoveringBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #FF8F1E;
+}
+
+.deviceErrorBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #750F7D;
+}
+
+.deviceDownMutedBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #FFE333;
+}
+
+.deviceThresholdBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #FFA833;
+}
+
+.deviceUnmonitoredBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: rgba(250, 253, 158, 0.8);
+}
+
+.deviceWarningBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #AA7807;
+}
+
+.deviceAlertBg {
+	color: rgba(22,22,22,0.8);
+	font-size: 10pt;
+	font-weight: bold;
+	background-color: #660000;
+}
+
+.beingGraphed {
+	color: green;
+}
+
+.notBeingGraphed {
+	color: #484848;
+}
+
+.menuoptions {
+	background: none repeat scroll 0 0 #EEE;
+	border-color: #F5F5F5 #E5E5E5 #CCC;
+	border-style: solid;
+	border-width: 0px 1px 1px 1px;
+	z-index: 2;
+	display: block;
+	float: right;
+	position: absolute;
+	right: 12px;
+	top: 58px;
+	list-style: none;
+	text-align: right;
+	margin: 0px;
+	padding: 0px;
+}
+
+.menuoptions li a {
+	display: block;
+	height: 14px;
+	padding: 4px;
+}
+
+.menuoptions li a:hover {
+	display: block;
+	text-decoration: none;
+	background-color: #E1E1E1;
+}
+
+.import_label {
+	opacity: 0;
+	display: none;
+}
+
+.import_button {
+	opacity: 1;
+}
+
+.import_text {
+	display: none;
+}
+
+.emailtest {
+	cursor: pointer;
+	display: block;
+	float: right;
+	text-align: right;
+	padding: 0px 5px 0px 0px;
+}
+
+.reloadquery {
+	cursor: pointer;
+	padding: 1px;
+	vertical-align: middle;
+	color: lime;
+	font-weight: bold;
+	font-size: 14px;
+	margin-right: 10px;
+}
+
+.verbosequery {
+	cursor: pointer;
+	padding: 1px;
+	vertical-align: middle;
+	color: rgba(255, 204, 0, 0.8);
+	font-size: 14px;
+	margin-right: 10px;
+}
+
+.deletequery {
+	cursor: pointer;
+	padding: 1px;
+	vertical-align: middle;
+	text-decoration: none;
+	color: red !important;
+	font-weight: bold;
+	font-size: 14px;
+	margin-right: 10px;
+}
+
+.deletequery:hover {
+	color: red !important;
+	text-decoration: none;
+	padding: 1px;
+	vertical-align: middle;
+}
+
+.odd {
+	background: none repeat scroll 0 0 #F5F5F5;
+	border: none;
+}
+
+.odd td, .even td, .even-alternate td {
+	padding: 2px;
+}
+
+.even {
+	background: none repeat scroll 0 0 #E5E5E5;
+	border: none;
+}
+
+.even-alternate {
+	background: none repeat scroll 0 0 #E7E9F2;
+	background-color: #E7E9F2;
+	border: none;
+}
+
+.saveRow {
+	background-color: #EAEAEA;
+	text-align: right;
+	padding: 4px;
+}
+
+.treeArea, .treeItemsArea {
+	width: 25%;
+	border: 1px solid #006400;
+	vertical-align: top;
+}
+
+.linkMarker {
+	color: #C16921;
+}
+
+.filteredValue {
+	background-color: #F8D93D;
+}
+
+.graphItemGr1Alt1 {
+	background-color: #EEEEEE;
+}
+
+.graphItemGr1Alt2 {
+	background-color: #EEEEEE;
+}
+
+.graphItemGr1Cust {
+	background-color: #D5D5D5;
+}
+
+.graphItemGr2Alt1 {
+	background-color: #E7E9F2;
+}
+
+.graphItemGr2Alt2 {
+	background-color: #E7E9F2;
+}
+
+.graphItemGr1Cust {
+	background-color: #D2D6E7;
+}
+
+.graphItemAdd {
+	background-color: #00438C;
+}
+
+.graphItemDel {
+	background-color: #C63636;
+}
+
+.graphItemHR {
+	color: #FF0000;
+}
+
+/* Device status pills - rounded translucent badges per state (get_colored_device_status) */
+.deviceStatus {
+	display: inline-block;
+	padding: 1px 9px;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 16px;
+	white-space: nowrap;
+}
+
+.deviceStatus.deviceUp {
+	background-color: rgba(40, 180, 40, 0.15);
+	border-color: rgba(40, 180, 40, 0.55);
+	color: #1b7a1b !important;
+}
+
+.deviceStatus.deviceDown {
+	background-color: rgba(211, 47, 47, 0.15);
+	border-color: rgba(211, 47, 47, 0.55);
+	color: #c62828 !important;
+}
+
+.deviceStatus.deviceRecovering {
+	background-color: rgba(255, 143, 30, 0.16);
+	border-color: rgba(255, 143, 30, 0.55);
+	color: #d35400 !important;
+}
+
+.deviceStatus.deviceError {
+	background-color: rgba(117, 15, 125, 0.14);
+	border-color: rgba(117, 15, 125, 0.5);
+	color: #6a1b9a !important;
+}
+
+.deviceStatus.deviceUnknown {
+	background-color: rgba(21, 101, 192, 0.14);
+	border-color: rgba(21, 101, 192, 0.5);
+	color: #1565c0 !important;
+}
+
+.deviceStatus.deviceDisabled {
+	background-color: rgba(97, 97, 97, 0.14);
+	border-color: rgba(97, 97, 97, 0.5);
+	color: #616161 !important;
+}
+
+.hostUp {
+	color: #000000;
+	font-size: 10px;
+	font-weight: normal;
+	font-family: monospace;
+}
+
+.hostDown {
+	color: #FF0000;
+	font-size: 10px;
+	font-weight: normal;
+	font-family: monospace;
+}
+
+.cactiPageHead {
+	background: #A9A9A9 url("./images/cacti_logo.svg") no-repeat scroll right 40% / 400px auto;
+	border-bottom: 1px solid #00438C;
+	height: 36px;
+	width: 100%;
+}
+
+.cactiGraphPageHeadBackdrop {
+	background-color: #A9A9A9;
+	vertical-align: bottom;
+	padding-bottom: 0px;
+	float: right;
+	width: 400px;
+	height: 36px;
+	z-index: -1;
+}
+
+.cactiConsolePageHeadBackdrop {
+	padding-bottom: 0px;
+	float: right;
+	width: 0px;
+	height: 36px;
+	z-index: -1;
+}
+
+.navigation {
+}
+
+.debug td {
+	padding: 3px;
+	margin: 0px;
+}
+
+.breadCrumbBar {
+	background-color: #E9E9E9;
+	padding: 2px;
+	height: 16px;
+}
+
+ul#breadcrumbs {
+	font-size: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.infoBar {
+	vertical-align: middle;
+	display: block;
+	min-width: 15%;
+	max-width: 40%;
+	margin-right: 10px;
+	float: right;
+	text-align: right;
+}
+
+#breadcrumbs li {
+	float: left;
+	font-size: 10px;
+	padding-top: 2px;
+}
+
+#breadcrumbs a {
+	padding-left: 5px;
+	padding-right: 5px;
+	float: left;
+	text-decoration: none;
+	color: blue;
+	position: relative;
+}
+
+.cactiContent {
+	clear: both;
+	width: calc(100% - 1px);
+	height: 100%;
+	vertical-align: top;
+	display: table;
+}
+
+.cactiTreeNavigationArea {
+	display: table-cell;
+	background: #EFEFEF url('./../../../images/shadow_gray.gif') repeat-x center top;
+	border-right: #AAAAAA 1px solid;
+	padding-left: 5px;
+	padding-right: 5px;
+	padding-top: 10px;
+	width: 250px;
+	max-width: 400px;
+	height: 100%;
+	float: left;
+	vertical-align: top;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.jstree {
+	position: relative;
+	display: block;
+}
+
+.cactiConsoleNavigationArea {
+	display: table-cell;
+	background: snow url('./../../../images/shadow_gray.gif') repeat-x center top;
+	border-right: #AAAAAA 1px solid;
+	padding-left: 0px;
+	padding-right: 0px;
+	padding-top: 5px;
+	vertical-align: top;
+	float: left;
+	width: 162px;
+	overflow-x: hidden;
+	height: 100%;
+}
+
+.cactiConsoleNavigationArea table {
+	width: 160px;
+}
+
+.treeTable {
+	width: 100%;
+}
+
+.treeArea {
+	vertical-align: top;
+}
+
+.cactiLogo {
+	padding-top: 20px;
+	background: #F5F5F5 url('./images/cacti_logo.svg') no-repeat 30px;
+	display: block;
+	cursor: pointer;
+	height: 140px;
+	width: 156px;
+	margin-top: 0px;
+	margin-left: 2px;
+	margin-right: 2px;
+}
+
+.loginLeft, .logoutLeft {
+	width: 33%;
+	float: left;
+}
+
+.loginCenter, .logoutCenter {
+	position: relative;
+	padding: 30px 0px 5px 20px;
+	top: 15%;
+	max-width: 350px;
+	max-height: 350px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.cactiLoginLogo, .cactiLogoutLogo {
+	position: relative;
+	float: right;
+	top: 15%;
+	background: transparent url('./../../../images/auth_background.gif') no-repeat center;
+	width: 350px;
+	height: 128px;
+	z-index: 2;
+	margin-top: -90px;
+	margin-left: 0px;
+	margin-bottom: -20px;
+}
+
+.loginArea, .logoutArea {
+	position: relative;
+}
+
+.cactiLoginTable td {
+	padding-bottom: 6px;
+	padding-right: 6px;
+}
+
+.cactiLoginTable input {
+	border: 1px solid #BBBBBB !important;
+}
+
+.loginErrors, .logoutErrors {
+	color: red;
+	min-height: 0px;
+}
+
+legend {
+	font-size: 22px;
+	font-weight: bold;
+	text-align: right;
+}
+
+.loginRight, .logoutRight {
+	width: 33%;
+	float: right;
+}
+
+.loginBody, .logoutBody {
+}
+
+.versionInfo {
+	padding-top: 5px;
+	float: right;
+	font-size: 10px;
+	color: black;
+}
+
+.actionsDropdown {
+	vertical-align: middle;
+	padding: 3px;
+	width: 100%;
+	text-align: right;
+	display: table;
+}
+
+.actionsDropdown div {
+	display: table-row;
+	margin-top: auto;
+	margin-bottom: auto;
+}
+
+.actionsDropdownButton {
+	vertical-align: top;
+	float: right;
+	margin-top: 1px;
+	margin-left: 3px;
+	margin-right: 5px;
+	display: table-column;
+}
+
+.actionsDropdownArrow {
+	margin-top: auto;
+	margin-bottom: auto;
+	float: left !important;
+	padding: 3px;
+}
+
+.loginPanel {
+	padding: 4px 0px;
+}
+
+.cactiGraphContentArea {
+	background: #FFFFFF url('./../../../images/shadow.gif') repeat-x center top;
+	display: table-cell;
+	padding-top: 10px;
+	padding-right: 5px;
+	padding-left: 5px;
+	vertical-align: top;
+	height: 100vh;
+}
+
+.spikekillData, .spikekillData td {
+	border: 1px solid #999;
+}
+
+.spikekillNote {
+	padding: 1px;
+	margin: 0px;
+}
+
+.spikekillMenu {
+	background: #F5F5F5 none repeat scroll 0 0;
+	border: 1px solid #979797;
+	box-shadow: 2px 2px 2px #999999;
+	margin: 0;
+	padding: 2px;
+	line-height: 1.5em;
+}
+
+.spikekillMenu li {
+	vertical-align: middle;
+}
+
+.spikekillMenu i {
+	text-align: center;
+	width: 2.0em;
+	display: inline-block;
+}
+
+.spikekillMenu i:empty {
+	width: 2.0em;
+	display: inline-block;
+}
+
+.cactiConsoleContentArea {
+	box-sizing: border-box;
+	background: #FFFFFF url('./../../../images/shadow.gif') repeat-x center top;
+	padding-top: 10px;
+	padding-right: 15px;
+	padding-left: 5px;
+	padding-bottom: 20px;
+	margin-left: 162px;
+	height: 100vh;
+	width: 100%;
+	vertical-align: top;
+	display: table-cell;
+	overflow-y: auto !important;
+}
+
+.hyperLink, .hyperLink:hover, .hyperLink:visited {
+	color: blue !important;
+	font-size: 1.1em;
+	padding: 3px;
+	cursor: pointer;
+	text-decoration: none;
+	text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.iconLink {
+	width: 20px;
+	line-height: 20px;
+	display: inline-block;
+}
+
+.noLinkEditMain {
+	color: blue;
+	text-decoration: none;
+	font-weight: bold;
+	padding: 3px;
+	white-space: nowrap;
+}
+
+.piinstall, .pienable, .pidisable, .piuninstall, .pierror, .piforceremove {
+	padding: 0px 3px !important;
+}
+
+.linkEditMain, .linkEditMain:visited, .linkEditMain:active {
+	color: blue;
+	text-decoration: none;
+	font-weight: normal;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.linkEditMain:hover {
+	color: blue;
+	text-decoration: underline;
+	font-weight: normal;
+}
+
+.linkOverDark, .linkOverDark:visited, .linkOverDark:active {
+	color: white;
+	font-weight: normal;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.linkOverDark:hover {
+	color: white;
+	text-decoration: underline;
+}
+
+.linkCopyDark, .linkCopyDark:visited, .linkCopyDark:active {
+	color: white;
+	font-weight: normal;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.linkCopyDark:hover {
+	color: white;
+	text-decoration: underline;
+}
+
+/* text styles */
+
+.textError {
+	font-size: 12px;
+	font-weight: bold;
+	color: red !important;
+}
+
+.textWarning {
+	font-size: 12px;
+	font-weight: normal;
+	color: orange !important;
+}
+
+.textInfo {
+	font-size: 12px;
+	font-weight: bold;
+	color: black;
+}
+
+.textHeader {
+	font-size: 12px;
+	font-weight: bold;
+}
+
+.textOverflow {
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: block;
+}
+
+.bold {
+	font-weight: bold;
+}
+
+.remover {
+	cursor: pointer;
+}
+
+.messageContainer {
+	text-align: center;
+	position: absolute;
+	display: none;
+	left: 30%;
+	right: 30%;
+	margin-left: auto;
+	margin-right: auto;
+	z-index: 4;
+}
+
+.messageBox {
+	padding: 1px;
+	margin-top: 2px;
+	border-radius: 3px;
+	background-color: #FFFFFF;
+	border: 1px solid #BBBBBB;
+	position: relative;
+	z-index: 4;
+}
+
+.textHeaderDark {
+	font-size: 12px;
+	font-weight: bold;
+	color: #FFFFFF;
+}
+
+.templateHeader {
+	background-color: #888888;
+}
+
+.templateHeader td {
+	padding: 3px;
+}
+
+.textSubHeaderDark, .textSubHeaderDark:visited {
+	font-size: 10px;
+	color: #FFFFFF;
+	font-weight: bold;
+	padding: 0px;
+}
+
+.tableBody {
+	background-color: #E1E1E1;
+}
+
+.cactiBorderWall {
+	border-width: 1px;
+	border-color: #00438C;
+	border-style: solid;
+}
+
+.cactiTable {
+	width: 100%;
+	border-width: 0px;
+	border-color: #00438C;
+	border-style: solid;
+	margin-left: auto;
+	margin-right: auto;
+	display: table;
+}
+
+.cactiInstallLoaderSpinnerTheme {
+	border-top-color: #00438c !important;
+}
+
+.cactiTableTitleRow {
+	color: white;
+	float: left;
+	line-height: 25px;
+	text-align: left;
+	display: block;
+	width: 100%;
+	background-color: #00438C;
+	font-size: 12px;
+	vertical-align: middle;
+}
+
+.cactiInstallTableTitleRow {
+	border-color: #00438C;
+}
+
+/* jQuery UI selectmenu + autocomplete + dialog - match this theme's select2 /
+   html_start_box styling instead of the jquery-ui.css themeroller look. */
+.ui-selectmenu-button.ui-button {
+	background: #ffffff;
+	border: 1px solid #aaaaaa;
+	border-radius: 6px;
+	color: #222222;
+}
+
+.ui-selectmenu-button.ui-button:hover,
+.ui-selectmenu-button.ui-selectmenu-button-open {
+	background: #ffffff;
+	border-color: #aaaaaa;
+	color: #222222;
+}
+
+.ui-selectmenu-menu .ui-menu,
+.ui-menu.ui-autocomplete {
+	background: #ffffff;
+	border: 1px solid #aaaaaa;
+	color: #222222;
+}
+
+.ui-selectmenu-menu .ui-menu .ui-menu-item-wrapper,
+.ui-menu.ui-autocomplete .ui-menu-item-wrapper {
+	color: #222222;
+}
+
+.ui-selectmenu-menu .ui-menu .ui-state-focus,
+.ui-selectmenu-menu .ui-menu .ui-state-active,
+.ui-menu.ui-autocomplete .ui-state-focus,
+.ui-menu.ui-autocomplete .ui-state-active {
+	background: #dadada;
+	border: 1px solid transparent;
+	color: #212121;
+}
+
+.ui-dialog {
+	padding: 0;
+	border: 1px solid #aaaaaa;
+	border-radius: 6px;
+	background: #ffffff;
+	color: #222222;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+	overflow: hidden;
+}
+
+.ui-dialog .ui-dialog-titlebar {
+	border: 0;
+	border-radius: 0;
+	padding: 0 8px;
+	box-sizing: border-box;
+	height: 25px;
+	line-height: 25px;
+	background: #00438C;
+	color: #ffffff;
+	font-size: 1em;
+	font-weight: bold;
+}
+
+.ui-dialog .ui-dialog-title {
+	font-weight: bold;
+	line-height: 25px;
+}
+
+.ui-dialog .ui-dialog-titlebar .ui-dialog-titlebar-close,
+.ui-dialog .ui-dialog-titlebar-close.ui-state-hover,
+.ui-dialog .ui-dialog-titlebar-close:hover,
+.ui-dialog .ui-dialog-titlebar-close:focus {
+	background: transparent;
+	border: 0;
+}
+
+.ui-dialog .ui-dialog-titlebar-close .ui-icon {
+	filter: brightness(0) invert(1);
+}
+
+.ui-dialog .ui-dialog-content {
+	background: #ffffff;
+	color: #222222;
+	padding: 14px 16px;
+	overflow: visible;
+}
+
+.ui-dialog .ui-dialog-buttonpane {
+	margin: 0;
+	border-top: 1px solid #aaaaaa;
+	background: #ffffff;
+	padding: 8px 12px;
+}
+
+.ui-dialog .ui-dialog-buttonpane .ui-button:first-child {
+	background: #00438C;
+	color: #ffffff;
+	border-color: #00438C;
+}
+
+.cactiTableTitle {
+	color: white;
+	float: left;
+	line-height: 25px;
+	height: 25px;
+	text-align: left;
+	display: block;
+	width: 70%;
+	background-color: #00438C;
+	font-size: 12px;
+	user-select: none;
+}
+
+.cactiTableButton {
+	float: right;
+	display: block;
+	line-height: 25px;
+	height: 25px;
+	text-align: right;
+	width: 30%;
+	background-color: #00438C;
+	white-space: nowrap;
+	user-select: none;
+}
+
+.cactiTableButton.debug {
+	background: transparent;
+	height: 1em;
+}
+
+.cactiTableButton span, .cactiTableTitle span {
+	color: white;
+	padding: 0px;
+	line-height: 25px;
+	white-space: nowrap;
+	overflow: hidden;
+	background: transparent;
+	user-select: none;
+}
+
+.cactiTableButton i {
+	padding: 0px 8px;
+}
+
+.cactiTableButton span:last-child i, .cactiTableTitle span:last-child i {
+	padding: 0px 8px !important;
+}
+
+.cactiTableButton .fa, .cactiTableTitle .fa {
+	display: inline;
+}
+
+.cactiTable td {
+	padding: 3px;
+}
+
+.cactiDebugTable {
+	width: 100%;
+}
+
+.filterTable {
+	white-space: nowrap;
+}
+
+.filterTable td:first-child {
+	width: 55px;
+	min-width: 55px;
+}
+
+.filterTable td {
+	padding: 2px;
+	white-space: nowrap;
+}
+
+.filterTable label {
+	vertical-align: 10%;
+}
+
+.formRow {
+	width: 100%;
+	line-height: 30px;
+	overflow-y: auto;
+}
+
+.formColumn {
+	float: left;
+	text-align: left;
+}
+
+.formColumnLeft {
+	float: left;
+	padding-left: 4px;
+	width: 45%;
+	text-align: left;
+}
+
+.formColumnRight {
+	float: left;
+	width: 45%;
+	text-align: left;
+}
+
+.formData {
+	display: inline-block;
+	float: left;
+	text-align: left;
+}
+
+.formRadio {
+	line-height: 22px;
+}
+
+.formSubCheckbox {
+	line-height: 20px;
+	float: left;
+}
+
+.formSubCheckbox input {
+	margin: 0px;
+	vertical-align: -10%;
+}
+
+.formSubCheckbox label {
+}
+
+.formCheckbox {
+	vertical-align: -15%;
+}
+
+.formFieldName {
+	display: inline-block;
+	color: #444;
+	float: left;
+	text-align: left;
+	font-weight: bold;
+	padding-left: 3px;
+}
+
+.formFieldDescription {
+	float: left;
+	font-weight: normal;
+	text-align: left;
+	line-height: 14px;
+}
+
+.formTooltip {
+	display: inline-block;
+	padding-left: 4px;
+}
+
+.formHeader {
+	float: left;
+	width: 100%;
+	color: #FFFFFF;
+	font-weight: bold;
+	cursor: pointer;
+	vertical-align: middle;
+	text-align: left;
+	border-right: 1px groove #EFEFEF;
+	font-size: 11px;
+	background-color: #6D88AD !important;
+}
+
+.formHeaderText {
+	padding: 3px;
+}
+
+.formHeaderAnchor {
+	float: right;
+	padding-right: 8px;
+}
+
+.hostInfoHeader {
+	width: 100%;
+}
+
+.queryAdd, .templateAdd {
+	padding: 3px;
+}
+
+@media screen and (max-width: 640px) {
+	.formRow {
+		display: table;
+		width: 100%;
+		line-height: 30px;
+	}
+
+	.formColumn {
+		float: left;
+		display: table-row;
+	}
+
+	.formColumnLeft {
+		float: left;
+		display: table-row;
+		width: 90%;
+		text-align: left;
+	}
+
+	.formColumnRight {
+		float: left;
+		display: table-row;
+		width: 100%;
+		text-align: left;
+	}
+
+	.formFieldName {
+		color: #444;
+		float: left;
+		text-align: left;
+		white-space: nowrap;
+		padding-left: 3px;
+	}
+
+	.formData {
+		float: left;
+	}
+
+	.hostInfoHeader {
+		overflow: hidden;
+	}
+
+	.queryAdd, .templateAdd, .navBar, #ping_results {
+		display: none;
+	}
+}
+
+.graphItem {
+	background-color: #D5D5D5;
+}
+
+.graphItemAlternate {
+	background-color: #D2D6E7;
+}
+
+.break {
+	height: 4px;
+}
+
+.next {
+	padding-right: 6px;
+	padding-left: 6px;
+}
+
+.previous {
+	padding-right: 6px;
+	padding-left: 6px;
+}
+
+.cactiNavBarTop {
+	background-color: #00438C;
+}
+
+.cactiNavBarBottom {
+	background-color: #00438C;
+}
+
+.tableHeader {
+	display: table-row;
+	background-color: #6D88AD !important;
+	line-height: 18px;
+}
+
+.tableHeader td {
+	color: #FFFFFF;
+	font-weight: bold;
+}
+
+.tableHeader th {
+	color: #FFFFFF;
+	font-weight: bold;
+	vertical-align: middle;
+	text-align: left;
+	border-right: 1px groove #EFEFEF;
+	font-size: 11px;
+	line-height: 18px;
+	background-color: #6D88AD !important;
+	padding: 2px;
+}
+
+.tableHeader th.sortable {
+	cursor: pointer !important;
+}
+
+.tableHeader th:last-child {
+	border-right: none !important;
+}
+
+.tableHeader th div {
+	display: block;
+	padding-right: 8px;
+	font-size: 10px;
+}
+
+.tableSubHeaderColumn, .tableSubHeaderColumnCenter, .tableSubHeaderColumnRight {
+	color: #FFFFFF;
+	font-weight: bold;
+	vertical-align: middle;
+	text-align: left;
+	cursor: pointer;
+	padding: 3px;
+}
+
+.tableSubHeaderColumnCenter {
+	text-align: center;
+}
+
+.tableSubHeaderColumnRight {
+	text-align: right;
+}
+
+.graphSubHeaderColumn {
+	color: #FFFFFF;
+	font-size: 12px;
+	vertical-align: middle;
+	text-align: left;
+	padding: 3px;
+}
+
+.tableSubHeaderCheckbox {
+	background-color: #819BC0;
+	max-width: 20px;
+	width: 20px;
+}
+
+.image_table {
+	width: 100%;
+}
+
+.tableConfirmation {
+	background-color: #F5F5F5;
+	border: 1px solid #AAAAAA;
+}
+
+.navBar {
+	min-width: 30%;
+	white-space: nowrap;
+}
+
+.navBarNavigation {
+	color: white;
+	width: 100%;
+	text-align: center;
+	vertical-align: middle;
+	display: table;
+	margin-left: auto;
+	margin-right: auto;
+	line-height: 18px;
+	background-color: #00438D;
+	font-size: 12px;
+}
+
+.navBarNavigation a, .navBarNavigation a:visited, .navBarNavigation a:hover {
+	color: white;
+	text-decoration: none;
+	font-weight: normal;
+	font-size: 12px;
+}
+
+.navBarNavigationPrevious {
+	text-align: left;
+	cursor: pointer;
+	font-weight: bold;
+	white-space: nowrap;
+	display: table-cell;
+	width: 10%;
+	padding: 2px 0px;
+	vertical-align: middle;
+}
+
+.navBarNavigationCenter {
+	text-align: center;
+	display: table-cell;
+	white-space: nowrap;
+	width: 80%;
+	padding: 2px 0px;
+	margin-top: auto;
+}
+
+.navBarNavigationCenter span {
+	vertical-align: middle;
+	display: table-cell;
+}
+
+.navBarNavigationNext {
+	text-align: right;
+	white-space: nowrap;
+	display: table-cell;
+	width: 10%;
+	vertical-align: middle;
+}
+
+.navBarNavigationNone {
+	text-align: center;
+	display: table-cell;
+	white-space: nowrap;
+	width: 100%;
+	height: 16px;
+	margin-top: auto;
+	padding-top: 3px;
+	padding-bottom: 3px;
+}
+
+.navBarNavigationNext i.ui-icon {
+	margin-top: -16px;
+	margin-right: -16px;
+	top: 50%;
+}
+
+.navBarNavigationPrevious i.ui-icon {
+	margin-bottom: -16px;
+	margin-left: -16px;
+	top: 50%;
+}
+
+.textArea {
+	font-size: 10px;
+	background-color: #F5F5F5;
+}
+
+.popupBox {
+	z-index: 2;
+	position: absolute;
+	padding: 0px;
+	display: none;
+	overflow: auto;
+	color: #FFFFFF;
+	background-color: #E5E5E5;
+	border: 1px solid #E5E5E5;
+}
+
+.installArea {
+	background-color: #FFFFFF;
+	padding: 10px;
+}
+
+.textAreaNotes {
+	font-size: 12px;
+}
+
+.textEditTitle {
+	font-size: 10px;
+	font-weight: bold;
+}
+
+.textMenuHeader {
+	color: #FFFFFF;
+	background-color: #9C9C9C;
+	font-size: 10px;
+	font-weight: bold;
+}
+
+.textMenuItem {
+	background-color: #F5F5F5;
+	font-size: 10px;
+}
+
+.textMenuSubItem {
+	background-color: #FFFFFF;
+	font-size: 10px;
+}
+
+.textMenuItemSelected {
+	background-color: #E1E1E1;
+	font-size: 10px;
+}
+
+.txtErrorTextBox {
+	border: 2px solid #FF0000;
+}
+
+.txtErrorText {
+	color: #FF0000;
+	font-size: 12px;
+	font-weight: bold;
+}
+
+/* tabs */
+.tabSpacer {
+	width: 0px;
+	padding-right: 2px;
+	padding-left: 0px;
+}
+
+.tabsMarginLeft {
+	padding-left: 2px;
+}
+
+.tabSelected {
+	background-color: silver;
+	white-space: nowrap;
+	width: 1%;
+}
+
+.tabNotSelected {
+	background-color: #DFDFDF;
+	white-space: nowrap;
+	width: 1%;
+}
+
+.tab {
+	border-color: #999 #666 -moz-use-text-color #999;
+	border-style: solid solid none;
+	border-width: 1px 1px medium;
+}
+
+.tabs li a {
+	background-color: #DFDFDF;
+	float: left !important;
+	padding: 5px 4px;
+	text-decoration: none;
+	font-size: 9px;
+	border-color: #999 #666 !important;
+	border-style: solid solid none;
+	border-width: 1px 1px medium;
+	font-weight: bold;
+}
+
+div#tabs {
+	padding-bottom: 0px;
+	float: left;
+	vertical-align: bottom;
+	height: 36px;
+	overflow: hidden;
+	width: 70%;
+}
+
+td#tabs {
+	padding-bottom: 0px;
+	float: left;
+	vertical-align: bottom;
+}
+
+.cactiGraphHeaderBackground {
+	height: 36px;
+	float: right;
+	z-index: -1;
+}
+
+div#gtabs {
+	padding-bottom: 0px;
+	vertical-align: bottom;
+	float: right;
+	height: 36px;
+	overflow: hidden;
+}
+
+.tabs {
+}
+
+.tabs a:hover {
+	background-color: silver;
+}
+
+.tabs a.selected {
+	background-color: silver;
+}
+
+.tabs li {
+	bottom: -1px;
+	float: left;
+	margin: 0 3px 0 0;
+}
+
+.tabs li.current a {
+	background: #FFFFFF;
+	border-bottom: 1px solid #FFFFFF;
+}
+
+.tabs li.current a:hover {
+	background: #FFFFFF;
+	border-bottom: 1px solid #FFFFFF;
+}
+
+.tabs nav {
+	padding: 0px 4px 0px 0px;
+	background-repeat: repeat-x;
+	zoom: 1;
+}
+
+.tabs nav:after {
+	clear: both;
+	display: block;
+	height: 0;
+	visibility: hidden;
+}
+
+.tabs ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+tr td:last-child .checkbox {
+	margin-right: 10px !important;
+}
+
+tr th:last-child .checkbox {
+	margin-right: 10px !important;
+}
+
+.fa-angle-double-up, .fa-angle-double-down {
+	margin-right: 10px;
+}
+
+.fa-plus, .fa-question-circle {
+	margin-right: 10px;
+}
+
+.fa-compress, .fa-expand {
+	margin-right: 10px;
+}
+
+
+/* Navigation Area */
+#nav {
+	margin: 0px;
+	overflow-y: auto;
+}
+
+#nav li a {
+	display: block;
+	font-size: 11px;
+	padding: 2px 4px;
+	background: #ccc;
+	border-bottom: 1px solid #666;
+	border-top: 1px solid #eee;
+	text-decoration: none;
+	color: blue;
+}
+
+#nav li a.active {
+	color: snow !important;
+	background-color: #9c9c9c;
+	border-bottom: 1px solid #666;
+	font-weight: bold;
+}
+
+#nav li a.pic:hover, #nav li ul li a.selected {
+	background-color: #e1e1e1;
+}
+
+#nav li ul {
+	display: none;
+	padding: 0;
+}
+
+#nav li ul li a {
+	padding: 2px 4px;
+	background: #F5F5F5;
+	border-bottom: 1px dotted #ccc;
+}
+
+#nav li ul li {
+	list-style: none;
+	padding: 0;
+}
+
+ul#nav {
+	list-style: none;
+	padding: 0;
+	width: 100%;
+}
+
+.clogError {
+     color: #ccc;
+	background-color: #6f0a07;
+}
+
+.clogWarning {
+	background-color: #EACC00;
+}
+
+.clogSQL {
+	background-color: #6DC8FE;
+}
+
+.clogDebug {
+	background-color: #C4FD3D;
+}
+
+.clogStats {
+	background-color: #96E78A;
+}
+
+.clogLimit {
+	background-color: #EACC00;
+}
+
+.clogStats td, .clogDebug td, .clogSQL td, .clogWarning td, .clogError td, .clogLimit td {
+	padding: 3px;
+}
+
+@media print {
+	.noprint {
+		display: none;
+	}
+}
+
+.ui-tooltip {
+	max-width: 500px;
+	word-break: break-word;
+}
+
+.ui-tooltip-content div.header {
+	color: blue;
+}
+
+.ui-tooltip-content {
+	min-width: 100px !important;
+	overflow: auto !important;
+	opacity: 0.95;
+	border-radius: 5px !important;
+	border: transparent;
+}
+
+.ui-tooltip-content div.content {
+	font-size: 10px;
+	color: #333333;
+}
+
+div.preformatted {
+	font-family: monospace;
+	white-space: pre;
+}
+
+ul.pagination {
+	display: inline-block;
+	padding: 0px;
+	margin: 0px;
+	vertical-align: middle;
+}
+
+ul.pagination li {
+	display: inline;
+}
+
+ul.pagination li a {
+	color: white;
+	float: left;
+	padding: 0px 2px 2px 2px;
+	text-decoration: none;
+	margin: 0px 1px;
+	vertical-align: -40%;
+}
+
+ul.pagination li span {
+	color: white;
+	float: left;
+	padding: 0px 0px;
+	text-decoration: none;
+	margin: 0px 1px;
+}
+
+ul.pagination li a.active {
+	background-color: #E1E1E1;
+	color: black;
+}
+
+ul.pagination li a:hover:not(.active) {
+	background-color: #9C9C9C;
+	color: black;
+}
+
+tr#realtime td:first-child {
+	height: 54px;
+}
+
+.logEmergency {
+	background-color: #FF0606;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.logCritical {
+	background-color: #F21721;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.logWarning {
+	background-color: #FF7A30;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.logAlert {
+	background-color: #F21924;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.logError {
+	background-color: #FB4A14;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.logNotice {
+	background-color: #FAFD9E;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.logInfo {
+	background-color: #CCFFCC;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.logDebug {
+	background-color: #CDCFC4;
+	text-align: center;
+	padding: 3px;
+	width: 12.5%;
+}
+
+.menuitem {
+	white-space: nowrap;
+}
+
+.menu_glyph {
+	display: none;
+}
+
+.ui-multiselect, .ui-multiselect span {
+	padding: 1px;
+	color: black;
+	font-size: 12px;
+}
+
+.ui-widget {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	padding: 0.4em;
+}
+
+.ui-corner-all {
+	border-radius: 0px;
+}
+
+.ui-state-default {
+	background: #FFFFFF !important;
+	border: none;
+	font-weight: normal;
+	padding: 2px;
+}
+
+.ui-select-text input {
+	width: 180px;
+	margin: 0;
+	padding: 0;
+	background: transparent;
+}
+
+.ui-multiselect-checkboxes span {
+	font-size: 12px;
+}
+
+.ui-multiselect-header {
+	background-color: #E5E5E5;
+}
+
+.ui-multiselect, .ui-multiselect-button, .ui-selectmenu-button {
+	padding: 0.3em 0.5em !important;
+	text-align: left;
+	line-height: initial;
+}
+
+.ui-multiselect-filter, .ui-widget-header {
+	font-weight: normal !important;
+	width: 100%;
+	margin-bottom: 4px;
+}
+
+.ui-multiselect-header ul {
+	margin-top: 4px;
+	height: 15px;
+	float: left;
+}
+
+.ui-multiselect-filter-label > input {
+	padding: 2px;
+	margin-left: 4px;
+}
+
+.ui-widget {
+	font-size: unset;
+}
+
+.graphWrapper {
+	position: relative;
+}
+
+.checkboxLabelWanted {
+	display: inline-block;
+}
+
+.right {
+	text-align: right;
+}
+
+td.center > table {
+	margin: 0 auto;
+}
+
+.ui-menu-item-wrapper {
+	white-space: nowrap;
+}
+
+/* Select2 - adapt to look like a native Cacti/jQuery UI control.
+   Select2 4.x ships no jQuery UI theme, so these overrides reuse this
+   theme's own jquery-ui.css/main.css colors (see .ui-widget-content /
+   .ui-state-hover / .ui-state-active) to match its look and feel. */
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+	border: 1px solid #aaaaaa;
+	border-radius: 6px;
+	background: #ffffff;
+	color: #222222;
+}
+
+/* match jQuery UI's shorter button height */
+.select2-container--default .select2-selection--single {
+	height: 24px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+	line-height: 24px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+	height: 22px;
+}
+
+/* match the multi-select (e.g. Templates) control to the single-select height;
+   flexbox centers content vertically regardless of font metrics */
+.select2-container--default .select2-selection--multiple {
+	min-height: 24px;
+	padding: 0 20px 0 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+	display: block;
+	flex: 1;
+	margin: 0;
+	padding-left: 8px;
+	overflow: hidden;
+	line-height: 24px;
+}
+
+/* select2-multi-count always replaces the rendered area with "N Selected" text;
+   only hide the inline search-while-typing box while closed (it doesn't fit
+   that display and was inflating the control's height) - let it reappear once
+   the dropdown opens, since that's the only place multi-selects can search from */
+select.select2-multi-count.select2-hidden-accessible + .select2-container:not(.select2-container--open) .select2-search--inline {
+	display: none;
+}
+
+.select2-selection--multiple .select2-count-label {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* once open, let the search box sit on its own row below the current
+   selection instead of overlapping it */
+.select2-container--default .select2-selection--multiple .select2-search--inline {
+	display: block;
+	width: 100%;
+	margin: 4px 0 0;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field {
+	width: 100% !important;
+	box-sizing: border-box;
+	margin: 0 !important;
+}
+
+/* select2 doesn't draw a dropdown arrow for multi-selects by default; add one to match */
+.select2-container--default .select2-selection--multiple::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	right: 8px;
+	margin-top: -2px;
+	border-color: currentColor transparent transparent transparent;
+	border-style: solid;
+	border-width: 5px 4px 0 4px;
+	height: 0;
+	width: 0;
+	pointer-events: none;
+}
+
+.select2-container--default.select2-container--open .select2-selection--multiple::after {
+	border-color: transparent transparent currentColor transparent;
+	border-width: 0 4px 5px 4px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.select2-results__option {
+	white-space: nowrap;
+	min-height: 24px;
+	box-sizing: border-box;
+}
+
+/* keep the first 15 results visible before the list needs to scroll */
+.select2-container--default .select2-results > .select2-results__options {
+	max-height: 360px;
+}
+
+/* checkbox-style indicator for select2-multi-count option rows */
+.select2-results__option .select2-checkbox-option {
+	position: relative;
+	display: block;
+	padding-left: 20px;
+}
+
+.select2-results__option .select2-checkbox-option::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 50%;
+	width: 13px;
+	height: 13px;
+	margin-top: -7px;
+	border: 1px solid currentColor;
+	border-radius: 2px;
+	box-sizing: border-box;
+}
+
+/* select2 also (re)uses aria-selected for mouse-hover/keyboard highlight
+ * tracking, unrelated to actual selection - key off the --selected class
+ * instead, which setClasses() only ever sets from the real selected data */
+.select2-results__option.select2-results__option--selected .select2-checkbox-option::after {
+	content: '\2713';
+	position: absolute;
+	left: 2px;
+	top: 50%;
+	margin-top: -7px;
+	font-size: 11px;
+	line-height: 13px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+	color: #222222;
+}
+
+/* select2 keeps --focus set after the dropdown closes; only --open should get the active look */
+.select2-container--default.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--multiple {
+	border-color: #999999;
+	background: #dadada;
+	color: #212121;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow b {
+	border-top-color: #222222;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+	background: #dadada;
+	border: 1px solid #aaaaaa;
+	color: #212121;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+	color: #212121;
+}
+
+.select2-dropdown {
+	border: 1px solid #aaaaaa;
+	background: #ffffff;
+	color: #222222;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field,
+.select2-container--default .select2-search--inline .select2-search__field {
+	border: 1px solid #aaaaaa;
+	background: #ffffff;
+	color: #222222;
+}
+
+.select2-container--default .select2-results__option--selected {
+	background: #dadada;
+	color: #212121;
+}
+
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+	background: #dadada;
+	color: #212121;
+}
+/* ======================================================================== */
+/* jsTree glyph icons - node type colors, sizing, and open/close carets     */
+/* ======================================================================== */
+
+/* remove the indent/connector dotted lines (also disabled via dots:false)  */
+.jstree-default .jstree-node { background: transparent !important; }
+
+/* node type glyphs, centered in the 20px node row */
+.jstree-default .jstree-anchor > .jstree-themeicon {
+	background-image: none !important;
+	font-size: 14px;
+	line-height: 20px;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-sitemap { color: #546E7A; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-folder { color: #F9A825; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-building { color: #00897B; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-map-marker-alt { color: #E53935; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-server { color: #1E88E5; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-cubes { color: #8E24AA; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-database { color: #0097A7; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-chart-line { color: #388E3C; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-chart-bar { color: #F57C00; }
+.jstree-default .jstree-anchor > .jstree-themeicon.fa-chart-pie { color: #C2185B; }
+
+/* open/close carets as glyphs, centered to match the node glyphs */
+.jstree-default .jstree-ocl {
+	background: none !important;
+	font-family: 'Font Awesome 5 Free', sans-serif;
+	font-weight: 900;
+	font-size: 14px;
+	line-height: 20px;
+	text-align: center;
+	vertical-align: middle;
+	color: #78909C;
+}
+.jstree-default .jstree-open > .jstree-ocl,
+.jstree-default .jstree-closed > .jstree-ocl { padding-top: 4px; }
+.jstree-default .jstree-closed > .jstree-ocl::before { content: "\f105"; }
+.jstree-default .jstree-open > .jstree-ocl::before { content: "\f107"; }
+.jstree-default .jstree-leaf > .jstree-ocl::before { content: ""; }
+
+/*
+ * Filter-table toggle switches (1.2.x). Render the raw filter checkboxes
+ * (<input type='checkbox'> directly inside a .filterTable wrapper) as on/off
+ * toggle switches styled to match this theme's form checkboxSlider, with the
+ * label text first and the switch second. form_checkbox() sliders (class
+ * 'formCheckbox') already render this way and are left untouched.
+ */
+.filterTable span:has(> input[type='checkbox']:not(.formCheckbox)),
+.filterTable div:has(> input[type='checkbox']:not(.formCheckbox)) {
+	display: inline-flex;
+	flex-direction: row-reverse;
+	align-items: center;
+	gap: 6px;
+}
+
+.filterTable input[type='checkbox']:not(.formCheckbox) {
+	-webkit-appearance: none;
+	appearance: none;
+	box-sizing: border-box;
+	position: relative;
+	flex: 0 0 auto;
+	width: 45px;
+	height: 24px;
+	margin: 0;
+	padding: 0;
+	border-radius: 24px !important;
+	background: rgba(128, 128, 128, 0.45);
+	cursor: pointer;
+	vertical-align: middle;
+	transition: background 0.4s;
+}
+
+.filterTable input[type='checkbox']:not(.formCheckbox)::before {
+	content: '';
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #ffffff;
+	transition: transform 0.4s;
+}
+
+.filterTable input[type='checkbox']:not(.formCheckbox):checked {
+	background: #2b8235;
+}
+
+.filterTable input[type='checkbox']:not(.formCheckbox):checked::before {
+	transform: translateX(20px);
+}
+
+.filterTable input[type='checkbox']:not(.formCheckbox):focus-visible {
+	outline: 2px solid #2b8235;
+	outline-offset: 1px;
+}
+
+.filterTable input[type='checkbox']:not(.formCheckbox):disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.filterTable input[type='checkbox']:not(.formCheckbox) + label {
+	cursor: pointer;
+}
+
+/* Graph drilldown action menu palette (consumed by include/css/graph_drilldown.css). */
+:root {
+	--cacti-dd-fg: #242424;
+	--cacti-dd-menu-bg: rgba(248,248,248,0.92);
+	--cacti-dd-menu-bg-open: rgba(255,255,255,0.97);
+	--cacti-dd-panel-bg: rgba(255,255,255,0.97);
+	--cacti-dd-border: rgba(0,0,0,0.20);
+	--cacti-dd-accent: #41708c;
+}

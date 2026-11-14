@@ -1,0 +1,20 @@
+#mlari-assistant{position:fixed;right:20px;bottom:16px;z-index:9000;font:14px/1.45 'Segoe UI',Arial,sans-serif;color:#eaf9ff}
+#mlari-assistant *{box-sizing:border-box}
+#mlari-assistant button{cursor:pointer}
+.mlari-ai-toggle{background:linear-gradient(120deg,#063455,#0799bb);color:#fff;border:1px solid #49dffa;border-radius:24px;padding:10px 18px;box-shadow:0 4px 18px #051b3270;font-weight:700}
+.mlari-ai-panel{width:min(420px,calc(100vw - 24px));height:min(550px,calc(100vh - 90px));background:#081f38;border:1px solid #37cbe6;border-radius:16px;box-shadow:0 16px 48px #00152599;display:flex;flex-direction:column;overflow:hidden;margin-bottom:10px}
+.mlari-ai-panel[hidden]{display:none}
+.mlari-ai-panel header{display:flex;justify-content:space-between;align-items:center;background:#0a4b6c;padding:12px 15px;color:#fff}
+.mlari-ai-close{background:transparent;border:0;color:#fff;font-size:23px}
+.mlari-ai-history{flex:1;overflow:auto;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.mlari-ai-message{margin:0 0 10px;padding:10px 12px;border-radius:11px;background:#153b58}
+.mlari-ai-message.user{background:#086886;margin-left:24px}
+.mlari-ai-message.system{background:#473d29;color:#ffe6aa}
+.mlari-ai-message a{color:#69e4ff;text-decoration:underline}
+.mlari-ai-form{border-top:1px solid #285570;padding:12px}
+.mlari-ai-form label{display:block;margin-bottom:7px;color:#b8deed;font-size:12px}
+.mlari-ai-form>div{display:flex;gap:8px}
+.mlari-ai-form input{min-width:0;flex:1;border:1px solid #5aa7bf;border-radius:8px;background:#0c314d;color:#fff;padding:9px}
+.mlari-ai-form button{border:0;border-radius:8px;background:#17c8e3;color:#052841;padding:9px 12px;font-weight:700}
+.mlari-ai-form button:disabled{opacity:.55;cursor:wait}
+@media(max-width:520px){#mlari-assistant{right:12px;bottom:12px}.mlari-ai-panel{height:min(70vh,550px)}}

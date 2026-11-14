@@ -1,0 +1,169 @@
+#!/usr/bin/env php
+<?php
+/*
+ +-------------------------------------------------------------------------+
+ | Copyright (C) 2004-2026 The Cacti Group                                 |
+ |                                                                         |
+ | This program is free software; you can redistribute it and/or           |
+ | modify it under the terms of the GNU General Public License             |
+ | as published by the Free Software Foundation; either version 2          |
+ | of the License, or (at your option) any later version.                  |
+ |                                                                         |
+ | This program is distributed in the hope that it will be useful,         |
+ | but WITHOUT ANY WARRANTY; without even the implied warranty of          |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           |
+ | GNU General Public License for more details.                            |
+ +-------------------------------------------------------------------------+
+ | Cacti: The Complete RRDtool-based Graphing Solution                     |
+ +-------------------------------------------------------------------------+
+ | This code is designed, written, and maintained by the Cacti Group. See  |
+ | about.php and/or the AUTHORS file for specific developer information.   |
+ +-------------------------------------------------------------------------+
+ | http://www.cacti.net/                                                   |
+ +-------------------------------------------------------------------------+
+*/
+
+require(__DIR__ . '/../include/cli_check.php');
+require_once($config['base_path'] . '/lib/api_graph.php');
+require_once(__DIR__ . '/../lib/maintenance_cli.php');
+
+ini_set('max_execution_time', '0');
+
+/* switch to main database for cli's */
+if ($config['poller_id'] > 1) {
+	db_switch_remote_to_main();
+}
+
+/* process calling arguments */
+$parms = $_SERVER['argv'];
+array_shift($parms);
+
+$debug   = false;
+$host_id = '';
+$filter  = '';
+
+if (cacti_sizeof($parms)) {
+	foreach($parms as $parameter) {
+		[$arg, $value] = cacti_cli_parse_argument($parameter);
+
+		switch ($arg) {
+			case '-id':
+			case '--id':
+			case '--host-id':
+				$host_id = $value;
+				break;
+			case '-s':
+			case '--filter':
+				$filter = $value;
+				break;
+			case '--debug':
+			case '-d':
+				$debug = true;
+				break;
+			case '--version':
+			case '-V':
+			case '-v':
+				display_version();
+				exit(0);
+			case '--help':
+			case '-H':
+			case '-h':
+				display_help();
+				exit(0);
+			default:
+				print 'ERROR: Invalid Parameter ' . $parameter . "\n\n";
+				display_help();
+				exit(1);
+		}
+	}
+} else {
+	print "ERROR: You must supply input parameters\n\n";
+	display_help();
+	exit(1);
+}
+
+/* form the 'where' clause for our main sql query */
+$where = cacti_reapply_names_where($host_id, $filter);
+
+if ($where === false) {
+	if (trim($host_id) === '') {
+		print "ERROR: You must specify either a host_id or 'all' to proceed.\n";
+	} else {
+		print "ERROR: Invalid host id '$host_id'.\n";
+	}
+
+	display_help();
+	exit(1);
+}
+
+[$sql_where, $sql_params] = $where;
+
+$graph_list = db_fetch_assoc_prepared("SELECT
+	graph_templates_graph.id,
+	graph_templates_graph.local_graph_id,
+	graph_templates_graph.height,
+	graph_templates_graph.width,
+	graph_templates_graph.title_cache,
+	graph_templates.name,
+	graph_local.host_id
+	FROM (graph_local,graph_templates_graph)
+	LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id)
+	WHERE graph_local.id=graph_templates_graph.local_graph_id
+	$sql_where", $sql_params);
+
+/* issue warnings and start message if applicable */
+print "WARNING: Do not interrupt this script.  Interrupting during rename can cause issues\n";
+debug("There are '" . cacti_sizeof($graph_list) . "' Graphs to rename");
+
+$i = 1;
+foreach ($graph_list as $graph) {
+	if (!$debug) print ".";
+	debug("Graph Name '" . $graph["title_cache"] . "' starting");
+	api_reapply_suggested_graph_title($graph["local_graph_id"]);
+	update_graph_title_cache($graph["local_graph_id"]);
+	debug("Graph Rename Done for Graph '" . $graph["title_cache"] . "'");
+	$i++;
+}
+
+/**
+ * Displays version information. Used as part of Cacti's CLI functionality.
+ *
+ * @return void No value is returned.
+ */
+function display_version() {
+	$version = get_cacti_cli_version();
+	print "Cacti Reapply graph Names Utility, Version $version, " . COPYRIGHT_YEARS . "\n";
+}
+
+/**
+ * Displays the usage of the function. Used as part of Cacti's CLI functionality.
+ *
+ * @return void No value is returned.
+ */
+function display_help () {
+	display_version();
+
+	print "\nusage: poller_graphs_reapply_names.php --host-id=<id|all|N1,N2,...> [--filter=<string>] [--debug]\n\n";
+	print "A utility to reapply Cacti Graph naming rules to existing Graphs in bulk.\n\n";
+	print "Required:\n";
+	print "    --host-id=id|all|N1,N2,... - The device id, 'all' or a comma delimited list of ids\n";
+	print "    --id and -id                 - Aliases for --host-id\n\n";
+	print "Optional:\n";
+	print "    --filter=string            - A Graph Template name or Graph Title to search for\n";
+	print "    --debug                    - Display verbose output during execution\n\n";
+}
+
+/**
+ * Debug. Used as part of Cacti's CLI functionality.
+ *
+ * @param mixed $message The message.
+ *
+ * @return void No value is returned.
+ */
+function debug($message) {
+	global $debug;
+
+	if ($debug) {
+		print("DEBUG: " . $message . "\n");
+	}
+}

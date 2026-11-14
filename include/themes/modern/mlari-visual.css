@@ -1,0 +1,61 @@
+/* MLARI presentation layer for Cacti's Modern theme. No monitoring settings. */
+:root{--mlari-navy:#082744;--mlari-deep:#051b32;--mlari-blue:#0a5684;--mlari-cyan:#09c8e8;--mlari-sky:#dff7ff;--mlari-ink:#0d2845}
+body:not(.loginBody):not(.logoutBody){background:#eaf3fa;color:var(--mlari-ink)}
+a,a:active,a:visited,.hyperLink,.hyperLink:visited,.linkEditMain,.noLinkEditMain{color:#08729b}
+a:hover,.hyperLink:hover{color:#034c73}
+
+/* Application chrome: keep Cacti's layout and interaction classes intact. */
+.cactiPageHead{background:linear-gradient(105deg,#071e39 0%,#084d70 59%,#092848 100%);border-bottom:2px solid var(--mlari-cyan);box-shadow:0 3px 14px #04192e44}
+.cactiPageHead::before{content:"";position:absolute;right:198px;top:5px;width:43px;height:43px;background:url('./images/mlari-mark.svg') center/contain no-repeat;pointer-events:none}
+.cactiPageHead::after{content:"MLARI";position:absolute;right:28px;top:10px;color:#f5fcff;font:700 27px/1.2 'Segoe UI',Arial,sans-serif;letter-spacing:.09em;text-shadow:0 2px 10px #00192b;pointer-events:none}
+.cactiConsolePageHeadBackdrop,.cactiGraphPageHeadBackdrop,.cactiGraphHeaderBackground{background-image:none}
+.cactiShadow{background:linear-gradient(#12bfda33,transparent);height:5px}
+.tabs a,.maintabs a{background:linear-gradient(#0f5a7e,#07314e);color:#eefaff;border:1px solid #2692b3;border-bottom-color:#072d49;text-shadow:none}
+.tabs a:hover,.maintabs a:hover{background:linear-gradient(#08799e,#095274);color:#fff}
+.tabs a.selected,.maintabs a.selected,.tabs li.current a,.maintabs li.current a{background:linear-gradient(#18c9e4,#087ca4);color:#032844;border-color:#65edff;font-weight:700}
+.breadCrumbBar{background:linear-gradient(#f7fbff,#d7eaf7);border-bottom:1px solid #bdd8ea}
+#breadcrumbs a{color:#174361}
+.cactiConsoleNavigationArea{background:linear-gradient(180deg,#0b3454,#071f38 72%,#06182d);border-right:1px solid #0b9ab7;box-shadow:3px 0 12px #0a304033;width:205px}
+.cactiConsoleNavigationArea table{width:100%}
+#nav li a{background:transparent;border-top:0;border-bottom:1px solid #ffffff17;color:#d7eefa;padding:7px 10px}
+#nav li a.active{background:linear-gradient(90deg,#0a506d,#0b3454);color:#fff;border-left:3px solid var(--mlari-cyan);filter:none}
+#nav li ul li a{background:#0b2a46;color:#c6e7f6;padding:6px 14px;border-bottom:1px solid #ffffff12}
+#nav li a.pic:hover,#nav li ul li a.selected{background:linear-gradient(90deg,#92eaff,#34bddc);color:#052840;font-weight:700;border-left:3px solid #08d8f1}
+.menu_parent i.fa,.menu_parent i.fas,.menu_parent i.fab,.menu_parent i.far,.menu_parent i.fal{color:#9feeff}
+.cactiLogo{background:#fff url('./images/mlari-logo.png') center/contain no-repeat;border-radius:8px;width:180px;height:62px;padding:0;margin:14px auto}
+.cactiNavBarTop,.tableHeader,.tableSubHeaderCheckbox{background:linear-gradient(#0b6585,#082d4c);filter:none}
+.tableHeader th,.tableHeader td,.tableSubHeaderColumn,.tableSubHeaderColumnCenter,.tableSubHeaderColumnRight{color:#f2fbff}
+.tableHeader th.primarySort,th.tablesorter-headerDesc,th.tablesorter-headerAsc{background:linear-gradient(#138fac,#07476d)}
+.cactiNavBarBottom{background-color:#0b567b}
+.odd{background:#f7fbfe}.even{background:#e9f2f8}.even-alternate{background:#dcebf5}
+tr.selectable:hover:not(.selected){background:#c9edf7}
+tr.selected{background:#b5eaf4}
+.ui-button,.ui-widget.ui-button{border-color:#85bed1}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--mlari-cyan);outline-offset:2px}
+
+/* Login: real Cacti form remains in place; only its presentation changes. */
+body.loginBody{box-sizing:border-box;min-height:100vh!important;height:100vh!important;overflow:auto;background:#041a33 url('./images/mlari-login-bg.png') center/cover no-repeat;display:flex;align-items:center;justify-content:flex-end;padding:32px clamp(24px,7vw,120px)}
+.loginLeft,.loginRight{display:none!important}
+.loginCenter{box-sizing:border-box;float:none;top:auto;width:min(525px,100%);max-width:525px;max-height:none;margin:0;padding:28px 34px 20px;background:linear-gradient(160deg,#0b3155ee,#071f3be8);border:1px solid #20c7ed;border-radius:24px;box-shadow:0 24px 70px #00102099,0 0 28px #13c5e630;color:#f3fbff;text-shadow:none}
+.cactiLoginLogo{display:none!important}
+.mlari-login-brand{display:flex;align-items:center;justify-content:center;margin:2px auto 20px;max-width:350px;background:#fff;border-radius:12px;padding:8px 14px;box-shadow:0 6px 24px #00152955}
+.mlari-login-brand img{display:block;width:100%;height:auto;max-height:116px;object-fit:contain}
+.mlari-login-heading{font:700 clamp(27px,3vw,35px)/1.2 'Segoe UI',Arial,sans-serif;text-align:center;color:#fff;margin:0 0 8px}
+.loginArea{min-height:0}
+.cactiAuthFieldset legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.loginTitle p{color:#b9e3f0;text-align:center;font-size:13px;line-height:1.45;margin:0 0 18px;padding:0}
+.cactiLoginTable{width:100%}
+.cactiLoginTable tr,.cactiLoginTable td{display:block;width:100%;box-sizing:border-box}
+.cactiLoginTable tr{margin-bottom:13px}
+.cactiLoginTable td{padding:0 0 5px}
+.cactiLoginTable label{color:#d9f5ff;font-size:13px;font-weight:600}
+.cactiLoginTable input[type=text],.cactiLoginTable input[type=password],.cactiLoginTable select{box-sizing:border-box;display:block;width:100%;max-width:none;height:43px;background:#0b3154;color:#fff;border:1px solid #5ca8cf;border-radius:9px;padding:9px 12px;font-size:15px;box-shadow:none}
+.cactiLoginTable input::placeholder{color:#a9ccdc}
+.cactiLoginTable input[type=checkbox]{accent-color:#10cae7}
+.cactiLoginTable input[type=submit]{display:block;width:100%;max-width:none;min-height:48px;background:linear-gradient(110deg,#0ad8ef,#0c8ce3);color:#062444;border:1px solid #5df2ff;border-radius:10px;font-weight:800;font-size:17px;box-shadow:0 7px 22px #00a9e344;cursor:pointer}
+.cactiLoginTable input[type=submit]:hover{background:linear-gradient(110deg,#7ff2ff,#20a9ed)}
+.loginErrors{color:#ffd6d6;min-height:16px;text-align:center}
+.versionInfo{color:#afd2e6;text-align:center;font-size:11px;margin-top:12px}
+@media(max-width:680px){body.loginBody{justify-content:center;padding:18px;background-position:35% center}.loginCenter{padding:20px 22px;width:100%}.cactiPageHead::before{display:none}.cactiPageHead::after{right:10px;top:14px;font-size:19px}.cactiConsoleNavigationArea{width:170px}}
+
+@media(min-width:900px){.cactiPageHead::after{content:'MLARI · Cable Milenio S.A.C.';font-size:18px;top:15px;letter-spacing:.03em}.cactiPageHead::before{right:360px;width:34px;height:34px;top:9px}}
