@@ -1,62 +1,89 @@
 # Sistemas MLARI — Carrera de Ingeniería UTP
 
-**README PRINCIPAL: instalación, uso y créditos de MLARI.** Los otros archivos `MLARI_*.md` y `CACTI_8_EQUIPOS_ESTADO.md` son notas técnicas históricas y pueden describir estados anteriores.
+**README principal del proyecto MLARI.** Aquí se describen sus funciones, tecnologías, requisitos e instalación. Los archivos de estado técnico son registros históricos y pueden reflejar pruebas anteriores.
 
-Sistemas MLARI es una personalización de [Cacti](https://www.cacti.net/) para visualizar y analizar una red de laboratorio. El diseño y la adaptación fueron realizados por **Eomar Frank, alumno de la Universidad Tecnológica del Perú (UTP)**. Es un proyecto académico personal de la carrera de ingeniería. El motor Cacti y los complementos de terceros conservan sus autores y licencias; consulta [LICENSE](LICENSE) y las licencias de cada componente.
+**Diseño y desarrollo de MLARI:** Eomar Frank, alumno de la Universidad Tecnológica del Perú (UTP). Proyecto académico personal orientado al monitoreo y diagnóstico de una red de laboratorio.
 
-## Funciones
+## ¿Qué es MLARI?
 
-- Muestra dispositivos, disponibilidad, interfaces y gráficas históricas recolectadas por Cacti.
-- Consulta equipos compatibles mediante ICMP y SNMP; RRDtool guarda y dibuja las series de tiempo.
-- Incluye `plugins/mlari`, con centro de control de topología, consulta de datos y asistente de diagnóstico. El asistente explica los datos disponibles; no ejecuta cambios de red.
-- Permite monitorear Cisco y MikroTik cuando están encendidos, configurados y alcanzables desde el servidor.
+MLARI es un sistema web de control de red. Reúne en un solo panel el inventario de dispositivos, su disponibilidad, las interfaces, los gráficos históricos y el estado de la recolección. Su objetivo es que el usuario pueda identificar rápidamente qué equipo responde, cuándo fue consultado por última vez y qué datos respaldan cada estado.
 
-El asistente de diagnóstico con IA es opcional. Si deseas usarlo, configura una clave propia de Gemini en la variable de entorno `GEMINI_API_KEY` accesible para Apache. No coloques esa clave en el repositorio.
+El laboratorio de referencia contiene routers, switches y equipos MikroTik virtualizados en EVE-NG. El mapa representa **12 nodos y 16 enlaces declarados**. Un enlace del dibujo no se considera operativo hasta contar con datos recientes de sus puertos; MLARI lo indica como **no verificado** cuando falta esa evidencia.
 
-El laboratorio original usa ocho equipos en EVE-NG. **EVE-NG no es necesario para abrir MLARI**, pero sí debe estar encendido para obtener muestras nuevas de esos equipos. Las IP, credenciales y muestras históricas de esa instalación no se distribuyen con el código.
+## Funciones del sistema
 
-## Requisitos de Windows
+| Sección | Qué muestra o permite hacer |
+|---|---|
+| Resumen | Conteo de equipos operativos, caídos y sin datos recientes; fecha del último sondeo. |
+| Topología | Mapa SVG interactivo con filtros, zoom, desplazamiento y posiciones guardadas en el navegador. |
+| Dispositivos | Inventario con búsqueda por nombre o IP, estado, último sondeo y disponibilidad histórica. |
+| Interfaces | Datos SNMP de puertos y aviso cuando el caché de interfaces está desactualizado. |
+| Rendimiento | Gráficos históricos asociados a cada dispositivo. |
+| Alertas | Incidencias y fechas de caída o recuperación ya registradas; esta pantalla no envía notificaciones por sí sola. |
+| Diagnóstico | Estado de la recolección y datos observados del equipo de referencia R8. |
+| Reportes | Resumen de estados y descarga del inventario en CSV. |
+| Configuración | Información del origen de datos, actualización de la vista y restauración del mapa. |
+| IA MLARI | Asistente opcional que analiza el contexto disponible y propone pasos de diagnóstico, sin cambiar la red. |
 
-| Componente | Uso | Versión mínima de esta rama de Cacti |
-|---|---|---|
-| XAMPP (Apache, PHP, MariaDB) | Web y base de datos | PHP 8.2+, MariaDB 10.5+ |
-| RRDtool | Gráficas y archivos RRD | 1.7+ |
-| Net-SNMP o PHP SNMP | Consultas SNMP | Net-SNMP 5.9+ |
-| Composer | Bibliotecas de `composer.lock` | 2 |
-| Programador de tareas | Sondeo periódico | Incluido en Windows |
+Los estados distinguen **alcanzable, caído, recuperando, deshabilitado y datos obsoletos**. El panel actualiza su consulta al servidor cada **60 segundos**. La actualización del navegador no equivale a un nuevo sondeo de red: el recolector debe estar funcionando para generar muestras nuevas.
 
-El instalador nuevo descarga **XAMPP 8.3.36** para equipos nuevos, con PHP 8.3 y MariaDB 10.11. Si ya existe `C:\xampp`, **no lo reemplaza**: la base de datos podría perderse. La copia antigua de XAMPP 8.2.12 contenía MariaDB 10.4, por debajo del mínimo; para migrarla se necesita respaldo y un procedimiento aparte.
+## Tecnologías utilizadas
 
-## Instalación
+### Frontend
 
-1. Descarga o clona el repositorio en una carpeta local de Windows de 64 bits.
-2. Haz doble clic en **`instalar-mlari.bat`**. Primero descarga los componentes que faltan en `%LOCALAPPDATA%\MLARI\descargas` y verifica los archivos; después inicia sus instaladores y prepara el enlace `C:\xampp\htdocs\cacti`.
-3. Si aparece el instalador de XAMPP, completa su asistente en `C:\xampp`. Windows puede solicitar permiso de administrador. El script espera a que termines el asistente.
-4. Crea una base de datos y una cuenta **nuevas** para Cacti según la [guía oficial de Windows](https://docs.cacti.net/Installing-Under-Windows.md). Copia `include/config.php.dist` a `include/config.php` y coloca allí los datos de conexión de *tu* base; nunca publiques ese archivo.
-5. Inicia Apache y MariaDB desde el panel XAMPP. Abre [http://localhost/cacti/](http://localhost/cacti/) y termina el asistente web de Cacti. Activa el complemento MLARI desde *Consola → Complementos* si hace falta.
-6. Configura el sondeo periódico de Cacti y la tarea de Windows que ejecute `C:\xampp\php\php.exe <ruta-del-proyecto>\poller.php` con el intervalo elegido. Confirma resultado `0` y muestras en los RRD.
-7. Añade tus equipos, rutas, credenciales SNMP y gráficos desde Cacti. En el laboratorio EVE-NG, enciende la VM y los nodos que quieras monitorear.
+- **HTML5 y CSS3:** estructura de las pantallas, diseño adaptable, tablas, indicadores y paneles.
+- **JavaScript sin framework de interfaz:** navegación entre secciones, filtros, búsqueda, detalles de dispositivos y actualización de contenido.
+- **SVG:** dibujo del mapa de topología y sus elementos interactivos.
+- **Fetch API y JSON:** comunicación asíncrona con los servicios del backend.
+- **`localStorage`:** guarda las posiciones personalizadas del mapa en el navegador del usuario.
 
-El instalador prepara el software; **la base, las contraseñas y la red se configuran para cada instalación**. No existe una contraseña universal ni se cargan datos privados del laboratorio.
+### Backend y datos
 
-### Comprobación sin instalar
+- **PHP 8.2 o superior:** lógica del sistema, páginas, API JSON, exportación CSV y acceso a datos.
+- **MariaDB 10.5 o superior:** inventario, estados, historial de sondeos, caché de interfaces y referencias a gráficos.
+- **Apache en XAMPP:** servidor web para la instalación local en Windows.
+- **ICMP y SNMP:** comprobación de disponibilidad y lectura de información de equipos compatibles.
+- **RRDtool 1.7 o superior:** almacenamiento de series de tiempo y generación de gráficos históricos.
+- **Programador de tareas de Windows:** ejecución periódica del recolector.
+- **Composer 2:** instalación de bibliotecas PHP definidas por el proyecto.
+- **API de Gemini, opcional:** respuestas del asistente IA mediante HTTPS. Requiere una clave propia en `GEMINI_API_KEY`, accesible para Apache. La clave nunca debe guardarse en GitHub.
 
-`powershell -NoProfile -ExecutionPolicy Bypass -File .\instalar-mlari.ps1 -Comprobar`
+## Requisitos antes de instalar
 
-Este modo muestra los componentes presentes sin descargar ni cambiar archivos.
+Windows de 64 bits, conexión a Internet para descargar dependencias y permisos para instalar programas. El instalador prepara XAMPP, RRDtool, herramientas SNMP y bibliotecas PHP que falten. Para ver datos reales también se necesita acceso de red a los equipos, direcciones y rutas correctas, permisos SNMP y un recolector programado.
+
+**EVE-NG es opcional para abrir MLARI.** Solo se necesita si se desea reproducir el laboratorio virtual y recibir telemetría de sus nodos. Si la VM o un equipo están apagados, no habrá muestras nuevas de ellos.
+
+## Instalar desde CMD
+
+```cmd
+git clone https://github.com/Mendoza-frank/sistemas-mlari-ingenieria-utp.git
+cd sistemas-mlari-ingenieria-utp
+instalar-mlari.bat
+```
+
+El instalador primero descarga y verifica los componentes faltantes; después inicia su instalación. En un equipo nuevo utiliza una versión de XAMPP con PHP y MariaDB compatibles. **No reemplaza una instalación existente ni sus bases de datos.** Si detecta versiones antiguas, se detiene para que el usuario haga un respaldo y planifique la migración.
+
+Después de instalar las herramientas, crea una base y una cuenta propias, copia `include/config.php.dist` a `include/config.php` y coloca allí los datos de conexión. Termina el asistente web local, activa MLARI, configura el sondeo periódico y agrega los equipos que quieras monitorear. Las credenciales, la configuración local y los datos históricos no se incluyen en el repositorio público.
+
+Para revisar requisitos sin descargar ni modificar archivos:
+
+```cmd
+powershell -NoProfile -ExecutionPolicy Bypass -File .\instalar-mlari.ps1 -Comprobar
+```
 
 ## Uso diario
 
-Inicia Apache y MariaDB en XAMPP y abre [http://localhost/cacti/](http://localhost/cacti/). Para datos nuevos, deben estar activos el recolector y los equipos de red. Un nodo apagado se mostrará caído y no generará muestras.
+Inicia Apache y MariaDB en XAMPP, abre la dirección local de MLARI y comprueba que la tarea de recolección esté activa. Enciende aparte los equipos que desees monitorear. Un estado antiguo debe leerse junto con la hora del último sondeo; la pantalla no supone que un enlace funciona solo porque sus extremos aparecen encendidos.
 
-## Archivos importantes
+## Archivos del proyecto
 
-- `README.md`: esta guía principal.
-- `instalar-mlari.bat` y `instalar-mlari.ps1`: preparación de Windows.
-- `plugins/mlari/`: personalización de MLARI.
-- `include/config.php.dist`: plantilla pública; `include/config.php` es privado.
-- `log/`, `rra/`, `cache/`: datos locales generados.
+- `README.md`: guía principal que estás leyendo.
+- `instalar-mlari.bat` y `instalar-mlari.ps1`: preparación del entorno Windows.
+- `plugins/mlari/`: interfaz, API, topología y asistente IA de MLARI.
+- `include/config.php.dist`: plantilla de configuración; `include/config.php` contiene datos privados y no se publica.
+- `log/`, `rra/` y `cache/`: datos generados en cada instalación.
 
-## Créditos
+## Licencias
 
-MLARI: **Eomar Frank (UTP)**. Motor de monitoreo: [Cacti](https://github.com/Cacti/cacti). Dependencias externas: [XAMPP](https://www.apachefriends.org/download.html), [RRDtool](https://github.com/oetiker/rrdtool-1.x), [Cygwin/Net-SNMP](https://cygwin.com/install.html) y [Composer](https://getcomposer.org/).
+MLARI conserva los avisos de autoría y las licencias de los componentes de software incluidos. Consulta [LICENSE](LICENSE) y los archivos de licencia correspondientes antes de redistribuir el proyecto.
