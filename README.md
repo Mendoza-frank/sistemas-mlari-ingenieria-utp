@@ -1,8 +1,8 @@
-# MLARI — Centro de Control de Red
+# Sistemas MLARI — Carrera de Ingeniería UTP
 
 **README PRINCIPAL: instalación, uso y créditos de MLARI.** Los otros archivos `MLARI_*.md` y `CACTI_8_EQUIPOS_ESTADO.md` son notas técnicas históricas y pueden describir estados anteriores.
 
-MLARI es una personalización de [Cacti](https://www.cacti.net/) para visualizar y analizar una red de laboratorio. El diseño y la adaptación de MLARI fueron realizados por **Eomar Frank, alumno de la Universidad Tecnológica del Perú (UTP)**. El motor Cacti y los complementos de terceros conservan sus autores y licencias; consulta [LICENSE](LICENSE) y las licencias de cada componente.
+Sistemas MLARI es una personalización de [Cacti](https://www.cacti.net/) para visualizar y analizar una red de laboratorio. El diseño y la adaptación fueron realizados por **Eomar Frank, alumno de la Universidad Tecnológica del Perú (UTP)**. Es un proyecto académico personal de la carrera de ingeniería. El motor Cacti y los complementos de terceros conservan sus autores y licencias; consulta [LICENSE](LICENSE) y las licencias de cada componente.
 
 ## Funciones
 
